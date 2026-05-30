@@ -1,0 +1,865 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#0B4F6C">
+<title>출조마당 🎣</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css">
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;overflow:hidden}
+:root{
+  --ocean:#0B4F6C;--ocean-mid:#1A7A9E;--ocean-light:#E3F4FB;--ocean-dark:#083D54;
+  --sand:#F5A623;--sand-light:#FEF3E2;
+  --fish:#1E8A52;--fish-light:#E6F6EE;
+  --text:#1A1A1A;--text-sub:#5A5A5A;--text-hint:#9A9A9A;
+  --bg:#F2F5F8;--card:#FFF;--border:rgba(0,0,0,0.07);
+  --danger:#C93535;--danger-light:#FDECEA;
+  --radius:14px;--radius-sm:10px;--radius-xs:7px;
+  --topbar-h:56px;--bottomnav-h:64px;
+  --safe-bottom:env(safe-area-inset-bottom,0px);
+}
+body{font-family:'Noto Sans KR',sans-serif;background:var(--bg);color:var(--text);font-size:14px;line-height:1.5}
+.app{display:flex;flex-direction:column;height:100dvh;max-width:480px;margin:0 auto;position:relative;background:var(--bg);box-shadow:0 0 40px rgba(0,0,0,0.15)}
+
+/* Topbar */
+.topbar{background:var(--ocean);color:#fff;height:var(--topbar-h);padding:0 16px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;z-index:50}
+.topbar-logo{font-size:17px;font-weight:800;display:flex;align-items:center;gap:7px;letter-spacing:-.3px}
+.topbar-icon-btn{width:36px;height:36px;border-radius:10px;border:none;background:rgba(255,255,255,.12);color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:20px;transition:background .15s}
+.topbar-icon-btn:active{background:rgba(255,255,255,.25)}
+
+/* Scroll */
+.scroll-area{flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;padding-bottom:calc(var(--bottomnav-h) + var(--safe-bottom) + 8px)}
+.scroll-area::-webkit-scrollbar{display:none}
+.page{display:none;padding:16px}
+.page.active{display:block}
+
+/* Bottom nav */
+.bottomnav{height:calc(var(--bottomnav-h) + var(--safe-bottom));padding-bottom:var(--safe-bottom);background:var(--card);border-top:.5px solid var(--border);display:flex;flex-shrink:0;z-index:50}
+.nav-btn{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;border:none;background:none;cursor:pointer;color:var(--text-hint);font-size:10px;font-family:inherit;font-weight:600;padding:8px 4px;transition:color .15s}
+.nav-btn i{font-size:22px;transition:transform .15s}
+.nav-btn.active{color:var(--ocean)}
+.nav-btn.active i{transform:translateY(-1px)}
+
+/* Loading overlay */
+.loading-overlay{position:fixed;inset:0;background:var(--ocean);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:999;transition:opacity .4s}
+.loading-overlay.hide{opacity:0;pointer-events:none}
+.loading-logo{font-size:56px;margin-bottom:12px;animation:bob .8s ease-in-out infinite alternate}
+.loading-title{color:#fff;font-size:22px;font-weight:800;margin-bottom:6px}
+.loading-sub{color:rgba(255,255,255,.6);font-size:13px}
+@keyframes bob{from{transform:translateY(0)}to{transform:translateY(-8px)}}
+
+/* Login */
+.login-wrap{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:70dvh;padding:20px}
+.login-card{background:var(--card);border-radius:var(--radius);border:.5px solid var(--border);padding:22px;width:100%;margin-top:20px}
+.login-title{font-size:20px;font-weight:800;color:var(--ocean);text-align:center;margin-bottom:4px}
+.login-sub{font-size:13px;color:var(--text-sub);text-align:center;margin-bottom:24px}
+
+/* Sec title */
+.sec-title{font-size:11px;font-weight:700;color:var(--text-hint);text-transform:uppercase;letter-spacing:.6px;margin-bottom:10px;padding:0 2px}
+
+/* Trip card */
+.trip-card{background:var(--card);border-radius:var(--radius);margin-bottom:10px;overflow:hidden;cursor:pointer;transition:transform .15s;border:.5px solid var(--border)}
+.trip-card:active{transform:scale(.98)}
+.trip-card-top{background:var(--ocean);padding:13px 14px 11px;display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
+.trip-title{color:#fff;font-size:15px;font-weight:700;line-height:1.3;flex:1}
+.trip-date-row{color:rgba(255,255,255,.75);font-size:11px;margin-top:4px;display:flex;align-items:center;gap:4px}
+.badges{display:flex;flex-direction:column;align-items:flex-end;gap:5px;flex-shrink:0}
+.dday{background:var(--sand);color:#6B3D00;font-size:11px;font-weight:800;padding:3px 8px;border-radius:20px;white-space:nowrap}
+.status-badge{font-size:10px;font-weight:700;padding:3px 8px;border-radius:20px;white-space:nowrap}
+.b-open{background:rgba(255,255,255,.2);color:#fff}
+.b-warn{background:rgba(245,166,35,.3);color:#FFD87A}
+.b-closed{background:rgba(201,53,53,.3);color:#FF9E9E}
+.b-mine{background:rgba(30,138,82,.3);color:#7DFFBB}
+.trip-card-body{padding:11px 14px 10px}
+.trip-meta{display:flex;flex-wrap:wrap;gap:10px}
+.meta-item{display:flex;align-items:center;gap:4px;font-size:12px;color:var(--text-sub)}
+.meta-item i{font-size:14px;color:var(--ocean-mid)}
+.trip-card-foot{padding:9px 14px;background:var(--bg);border-top:.5px solid var(--border);display:flex;align-items:center;gap:10px}
+.slot-bar{flex:1;height:5px;background:rgba(0,0,0,.08);border-radius:3px;overflow:hidden}
+.slot-fill{height:100%;border-radius:3px;transition:width .4s}
+
+/* Detail */
+.detail-hero{background:var(--ocean);margin:-16px -16px 16px;padding:14px 16px 18px}
+.back-row{display:flex;align-items:center;gap:6px;margin-bottom:10px}
+.back-btn{background:rgba(255,255,255,.15);border:none;border-radius:8px;color:#fff;width:32px;height:32px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:18px}
+.detail-title{color:#fff;font-size:19px;font-weight:800;line-height:1.3;margin-bottom:5px}
+.detail-sub{color:rgba(255,255,255,.75);font-size:12px;display:flex;align-items:center;gap:5px;flex-wrap:wrap}
+.info-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px}
+.info-box{background:var(--card);border-radius:var(--radius-sm);border:.5px solid var(--border);padding:12px}
+.info-label{font-size:10px;font-weight:700;color:var(--text-hint);text-transform:uppercase;letter-spacing:.4px;margin-bottom:4px}
+.info-val{font-size:16px;font-weight:800;color:var(--text)}
+.info-val.accent{color:var(--ocean)}
+.prog-box{background:var(--card);border-radius:var(--radius-sm);border:.5px solid var(--border);padding:13px;margin-bottom:14px}
+.prog-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:9px}
+.prog-bar{height:7px;background:rgba(0,0,0,.07);border-radius:4px;overflow:hidden}
+.prog-fill{height:100%;border-radius:4px;transition:width .5s cubic-bezier(.4,0,.2,1)}
+
+/* Buttons */
+.btn{display:flex;align-items:center;justify-content:center;gap:7px;width:100%;padding:14px;border-radius:var(--radius-sm);border:none;cursor:pointer;font-size:15px;font-weight:700;font-family:inherit;transition:all .15s}
+.btn:active{transform:scale(.97)}
+.btn-primary{background:var(--ocean);color:#fff}
+.btn-danger{background:var(--danger);color:#fff}
+.btn-kakao{background:#FEE500;color:#3A1D1D}
+.btn-kakao:active{background:#EDD400}
+.btn-success{background:var(--fish);color:#fff;opacity:.85;cursor:default}
+.btn-success:active{transform:none}
+.btn-disabled{background:rgba(0,0,0,.07);color:var(--text-hint);cursor:not-allowed}
+.btn-disabled:active{transform:none}
+.btn-outline{background:var(--card);color:var(--text);border:.5px solid var(--border)}
+.btn-sm{padding:9px 14px;font-size:13px;border-radius:var(--radius-xs);width:auto}
+
+/* Chat reveal */
+.chat-reveal{background:var(--fish-light);border:1.5px dashed var(--fish);border-radius:var(--radius-sm);padding:16px;margin-bottom:14px;text-align:center}
+.chat-reveal-title{font-size:13px;font-weight:800;color:var(--fish);margin-bottom:10px;display:flex;align-items:center;justify-content:center;gap:5px}
+
+/* Applicants */
+.applicants-section{background:var(--card);border-radius:var(--radius-sm);border:.5px solid var(--border);overflow:hidden;margin-bottom:14px}
+.applicants-header{padding:12px 14px;border-bottom:.5px solid var(--border);font-size:13px;font-weight:700;display:flex;align-items:center;justify-content:space-between}
+.applicant-row{display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:.5px solid var(--border)}
+.applicant-row:last-child{border-bottom:none}
+.avatar{width:34px;height:34px;border-radius:50%;background:var(--ocean-light);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:var(--ocean);flex-shrink:0}
+.avatar.mine{background:var(--fish-light);color:var(--fish)}
+
+/* Admin */
+.admin-card{background:var(--card);border-radius:var(--radius);border:.5px solid var(--border);overflow:hidden;margin-bottom:12px}
+.admin-card-head{padding:13px 14px;border-bottom:.5px solid var(--border);display:flex;align-items:flex-start;justify-content:space-between;gap:8px}
+.admin-card-body{padding:13px 14px}
+.stats-row{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px}
+.stat-box{background:var(--bg);border-radius:var(--radius-xs);padding:10px;text-align:center}
+.stat-num{font-size:18px;font-weight:800;color:var(--ocean)}
+.stat-lab{font-size:10px;color:var(--text-hint);margin-top:1px;font-weight:500}
+.kakao-link-block{background:var(--sand-light);border:.5px solid rgba(245,166,35,.35);border-radius:var(--radius-xs);padding:11px;margin-bottom:10px}
+.kakao-link-label{font-size:11px;font-weight:700;color:#7A4F00;margin-bottom:6px;display:flex;align-items:center;gap:4px}
+.kakao-link-input{width:100%;background:var(--card);border:.5px solid rgba(245,166,35,.5);border-radius:6px;padding:8px 10px;font-size:12px;color:var(--text);outline:none;font-family:inherit}
+.chip{background:var(--ocean-light);color:var(--ocean);font-size:11px;font-weight:600;padding:4px 9px;border-radius:20px;display:inline-block;margin:2px}
+
+/* Form / Modal */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:200;display:none;align-items:flex-end;justify-content:center}
+.modal-overlay.open{display:flex}
+.modal{background:var(--card);border-radius:20px 20px 0 0;padding:20px 18px calc(20px + var(--safe-bottom));width:100%;max-width:480px;max-height:90dvh;overflow-y:auto}
+.modal::-webkit-scrollbar{display:none}
+.modal-handle{width:36px;height:4px;background:rgba(0,0,0,.1);border-radius:2px;margin:0 auto 16px}
+.modal-title{font-size:17px;font-weight:800;margin-bottom:18px;display:flex;align-items:center;gap:8px}
+.modal-title i{color:var(--ocean)}
+.form-group{margin-bottom:13px}
+.form-label{font-size:12px;font-weight:700;color:var(--text-sub);margin-bottom:5px;display:block}
+.form-input{width:100%;padding:11px 13px;border:1px solid var(--border);border-radius:var(--radius-xs);font-size:14px;font-family:inherit;background:var(--bg);color:var(--text);outline:none;transition:border .2s;-webkit-appearance:none}
+.form-input:focus{border-color:var(--ocean-mid);background:#fff}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.form-hint{font-size:11px;color:var(--text-hint);margin-top:4px}
+
+/* My trips */
+.my-trip-card{background:var(--card);border-radius:var(--radius);border:.5px solid var(--border);overflow:hidden;margin-bottom:10px;cursor:pointer}
+.my-trip-card:active{opacity:.85}
+.my-trip-head{padding:12px 14px;background:var(--ocean);display:flex;justify-content:space-between;align-items:center}
+.my-trip-title{color:#fff;font-size:14px;font-weight:700}
+.my-trip-body{padding:11px 14px;display:flex;justify-content:space-between;align-items:center}
+
+/* Profile */
+.profile-header{background:var(--ocean);margin:-16px -16px 16px;padding:24px 16px 20px;text-align:center}
+.profile-avatar-big{width:64px;height:64px;border-radius:50%;background:rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center;font-size:26px;font-weight:800;color:#fff;margin:0 auto 10px}
+.profile-section{background:var(--card);border-radius:var(--radius-sm);border:.5px solid var(--border);margin-bottom:12px;overflow:hidden}
+.profile-row{display:flex;align-items:center;justify-content:space-between;padding:13px 14px;border-bottom:.5px solid var(--border);font-size:14px}
+.profile-row:last-child{border-bottom:none}
+.profile-row-label{display:flex;align-items:center;gap:8px;color:var(--text-sub)}
+.profile-row-label i{font-size:18px;color:var(--ocean-mid)}
+
+/* Toast */
+.toast{position:fixed;bottom:calc(var(--bottomnav-h) + var(--safe-bottom) + 12px);left:50%;transform:translateX(-50%) translateY(8px);background:#1A1A1A;color:#fff;padding:10px 18px;border-radius:20px;font-size:13px;font-weight:600;opacity:0;transition:all .25s;z-index:999;white-space:nowrap;pointer-events:none;max-width:90vw;text-align:center}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+/* Empty */
+.empty{text-align:center;padding:48px 20px;color:var(--text-hint)}
+.empty i{font-size:48px;margin-bottom:10px;display:block;opacity:.3}
+
+/* Sync indicator */
+.sync-dot{width:7px;height:7px;border-radius:50%;background:#4CAF50;display:inline-block;margin-left:6px;animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+.sync-dot.offline{background:#F44336;animation:none}
+
+.divider-label{font-size:11px;font-weight:700;color:var(--text-hint);text-transform:uppercase;letter-spacing:.5px;padding:14px 14px 6px}
+</style>
+</head>
+<body>
+
+<!-- Loading -->
+<div class="loading-overlay" id="loading">
+  <div class="loading-logo">🎣</div>
+  <div class="loading-title">출조마당</div>
+  <div class="loading-sub">데이터 불러오는 중...</div>
+</div>
+
+<div class="app">
+  <!-- Topbar -->
+  <div class="topbar">
+    <div class="topbar-logo">
+      <span>🎣</span> 출조마당
+      <span class="sync-dot" id="sync-dot" title="실시간 연결됨"></span>
+    </div>
+    <div style="display:flex;gap:4px">
+      <button class="topbar-icon-btn" onclick="showToast('🔔 새 알림이 없습니다')" aria-label="알림">
+        <i class="ti ti-bell"></i>
+      </button>
+    </div>
+  </div>
+
+  <!-- Pages -->
+  <div class="scroll-area">
+
+    <!-- 로그인 -->
+    <div id="page-login" class="page active">
+      <div class="login-wrap">
+        <div style="font-size:52px;margin-bottom:8px">🎣</div>
+        <div class="login-title">출조마당</div>
+        <div class="login-sub">낚시 출조 모집 · 선착순 신청 · 채팅방 연결</div>
+        <div class="login-card">
+          <div class="form-group">
+            <label class="form-label">이름</label>
+            <input class="form-input" id="login-name" placeholder="홍길동">
+          </div>
+          <div class="form-group">
+            <label class="form-label">카카오톡 아이디</label>
+            <input class="form-input" id="login-kakao" placeholder="kakao_id">
+            <div class="form-hint">* 운영자가 채팅방 초대 시 사용됩니다</div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">연락처</label>
+            <input class="form-input" id="login-phone" placeholder="010-0000-0000" type="tel">
+          </div>
+          <div class="form-group" id="admin-code-group" style="display:none">
+            <label class="form-label">운영자 코드 <span style="color:var(--text-hint);font-weight:400">(운영진만)</span></label>
+            <input class="form-input" id="login-admincode" placeholder="운영자 코드 입력">
+          </div>
+          <div style="margin-bottom:13px">
+            <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;color:var(--text-sub)">
+              <input type="checkbox" id="is-admin-check" onchange="toggleAdminField()" style="width:16px;height:16px">
+              운영진으로 가입
+            </label>
+          </div>
+          <button class="btn btn-primary" onclick="doLogin()">
+            <i class="ti ti-login"></i> 시작하기
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 홈 -->
+    <div id="page-home" class="page">
+      <p class="sec-title">모집 중인 출조</p>
+      <div id="trip-list"></div>
+    </div>
+
+    <!-- 상세 -->
+    <div id="page-detail" class="page">
+      <div id="detail-content"></div>
+    </div>
+
+    <!-- 내 신청 -->
+    <div id="page-mytrips" class="page">
+      <p class="sec-title">내 신청 현황</p>
+      <div id="mytrips-list"></div>
+    </div>
+
+    <!-- 운영자 -->
+    <div id="page-admin" class="page">
+      <p class="sec-title">운영자 대시보드</p>
+      <button class="btn btn-primary" style="margin-bottom:14px" onclick="openNewModal()">
+        <i class="ti ti-plus"></i> 새 출조 등록
+      </button>
+      <div id="admin-list"></div>
+    </div>
+
+    <!-- 프로필 -->
+    <div id="page-profile" class="page">
+      <div class="profile-header">
+        <div class="profile-avatar-big" id="profile-avatar">?</div>
+        <div style="color:#fff;font-size:18px;font-weight:800" id="profile-name-disp">-</div>
+        <div style="color:rgba(255,255,255,.7);font-size:13px;margin-top:3px" id="profile-kakao-disp">-</div>
+      </div>
+      <div class="profile-section">
+        <div class="profile-row">
+          <span class="profile-row-label"><i class="ti ti-user"></i> 이름</span>
+          <span style="font-weight:600" id="p-name">-</span>
+        </div>
+        <div class="profile-row">
+          <span class="profile-row-label"><i class="ti ti-brand-kakao"></i> 카톡 아이디</span>
+          <span style="font-weight:600" id="p-kakao">-</span>
+        </div>
+        <div class="profile-row">
+          <span class="profile-row-label"><i class="ti ti-phone"></i> 연락처</span>
+          <span style="font-weight:600" id="p-phone">-</span>
+        </div>
+        <div class="profile-row">
+          <span class="profile-row-label"><i class="ti ti-shield-check"></i> 역할</span>
+          <span style="font-weight:600" id="p-role">-</span>
+        </div>
+      </div>
+      <div class="profile-section">
+        <div class="divider-label">계정</div>
+        <div class="profile-row" onclick="doLogout()" style="cursor:pointer">
+          <span class="profile-row-label"><i class="ti ti-logout"></i> 로그아웃</span>
+          <i class="ti ti-chevron-right" style="color:var(--text-hint)"></i>
+        </div>
+      </div>
+      <div class="profile-section">
+        <div class="divider-label">앱 정보</div>
+        <div class="profile-row">
+          <span class="profile-row-label"><i class="ti ti-info-circle"></i> 버전</span>
+          <span style="color:var(--text-hint)">v2.0 (Firebase)</span>
+        </div>
+        <div class="profile-row">
+          <span class="profile-row-label"><i class="ti ti-database"></i> DB 연결</span>
+          <span style="color:var(--fish);font-weight:600" id="db-status">연결중...</span>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Bottom Nav -->
+  <div class="bottomnav" id="bottomnav" style="display:none">
+    <button class="nav-btn active" data-page="home" onclick="switchPage('home',this)">
+      <i class="ti ti-home"></i>홈
+    </button>
+    <button class="nav-btn" data-page="mytrips" onclick="switchPage('mytrips',this)">
+      <i class="ti ti-clipboard-list"></i>내 신청
+    </button>
+    <button class="nav-btn" data-page="admin" onclick="switchPage('admin',this)" id="admin-nav-btn" style="display:none">
+      <i class="ti ti-settings"></i>운영
+    </button>
+    <button class="nav-btn" data-page="profile" onclick="switchPage('profile',this)">
+      <i class="ti ti-user"></i>프로필
+    </button>
+  </div>
+</div>
+
+<!-- 새 출조 등록 모달 -->
+<div class="modal-overlay" id="new-modal">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title"><i class="ti ti-fish"></i> 새 출조 등록</div>
+    <div class="form-group">
+      <label class="form-label">출조명 *</label>
+      <input class="form-input" id="f-title" placeholder="예) 서해 광어 선상 출조">
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">출조 날짜 *</label>
+        <input class="form-input" type="date" id="f-date">
+      </div>
+      <div class="form-group">
+        <label class="form-label">출발 시간</label>
+        <input class="form-input" type="time" id="f-time" value="05:00">
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">선착장 / 장소 *</label>
+      <input class="form-input" id="f-location" placeholder="예) 인천 연안부두 3번 선착장">
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">모집 정원</label>
+        <input class="form-input" type="number" id="f-capacity" value="10" min="1" max="99">
+      </div>
+      <div class="form-group">
+        <label class="form-label">1인 비용 (원)</label>
+        <input class="form-input" type="number" id="f-cost" value="80000">
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">모집 마감일</label>
+      <input class="form-input" type="date" id="f-deadline">
+    </div>
+    <div class="form-group">
+      <label class="form-label">카카오 오픈채팅 링크</label>
+      <input class="form-input" id="f-kakao" placeholder="https://open.kakao.com/o/...">
+      <div class="form-hint">* 마감 후 신청자에게만 공개됩니다</div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">안내사항</label>
+      <input class="form-input" id="f-note" placeholder="예) 낚시대 개인 지참, 미끼 제공">
+    </div>
+    <div style="display:flex;gap:10px;margin-top:4px">
+      <button class="btn btn-primary" style="flex:1" onclick="submitNewTrip()">
+        <i class="ti ti-check"></i> 등록하기
+      </button>
+      <button class="btn btn-outline" style="flex:0 0 72px;border:.5px solid var(--border)" onclick="closeModal('new-modal')">취소</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<!-- Firebase SDK -->
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import {
+  getFirestore, collection, doc,
+  addDoc, updateDoc, deleteDoc,
+  onSnapshot, query, orderBy, serverTimestamp, getDoc, setDoc
+} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+/* ── Firebase 초기화 ───────────────────────────────────── */
+const firebaseConfig = {
+  apiKey: "AIzaSyAxyLn2wNlxXqJ3IzjuCR7_c54JMufjXHU",
+  authDomain: "mulbit-9195c.firebaseapp.com",
+  projectId: "mulbit-9195c",
+  storageBucket: "mulbit-9195c.firebasestorage.app",
+  messagingSenderId: "754737585082",
+  appId: "1:754737585082:web:c84ce6bf7635d10ff11b83"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
+/* ── State ─────────────────────────────────────────────── */
+let ME = null;
+let TRIPS = [];
+let currentPage = 'login';
+let prevPage = 'home';
+let unsubscribe = null;
+const ADMIN_CODE = 'fish2024'; // 운영자 코드 (나중에 변경 가능)
+
+/* ── 로딩 숨기기 ───────────────────────────────────────── */
+setTimeout(() => {
+  document.getElementById('loading').classList.add('hide');
+  // 로컬스토리지에 저장된 사용자 있으면 자동 로그인
+  const saved = localStorage.getItem('chuljo_user');
+  if (saved) {
+    ME = JSON.parse(saved);
+    afterLogin();
+  }
+}, 800);
+
+/* ── 로그인 ────────────────────────────────────────────── */
+window.toggleAdminField = function() {
+  const checked = document.getElementById('is-admin-check').checked;
+  document.getElementById('admin-code-group').style.display = checked ? 'block' : 'none';
+};
+
+window.doLogin = function() {
+  const name = document.getElementById('login-name').value.trim();
+  const kakao = document.getElementById('login-kakao').value.trim();
+  const phone = document.getElementById('login-phone').value.trim();
+  const isAdminChecked = document.getElementById('is-admin-check').checked;
+  const adminCode = document.getElementById('login-admincode').value.trim();
+
+  if (!name || !kakao) { showToast('⚠️ 이름과 카톡 아이디를 입력해주세요'); return; }
+
+  let isAdmin = false;
+  if (isAdminChecked) {
+    if (adminCode !== ADMIN_CODE) { showToast('⚠️ 운영자 코드가 올바르지 않습니다'); return; }
+    isAdmin = true;
+  }
+
+  ME = { name, kakao, phone, isAdmin };
+  localStorage.setItem('chuljo_user', JSON.stringify(ME));
+  afterLogin();
+};
+
+function afterLogin() {
+  // UI 업데이트
+  document.getElementById('profile-avatar').textContent = ME.name[0];
+  document.getElementById('profile-name-disp').textContent = ME.name;
+  document.getElementById('profile-kakao-disp').textContent = '@' + ME.kakao;
+  document.getElementById('p-name').textContent = ME.name;
+  document.getElementById('p-kakao').textContent = ME.kakao;
+  document.getElementById('p-phone').textContent = ME.phone || '-';
+  document.getElementById('p-role').textContent = ME.isAdmin ? '운영자' : '일반 회원';
+
+  // 운영자 탭 표시
+  if (ME.isAdmin) document.getElementById('admin-nav-btn').style.display = 'flex';
+
+  // 바텀 네비 표시
+  document.getElementById('bottomnav').style.display = 'flex';
+
+  // Firestore 실시간 구독 시작
+  startRealtimeSync();
+
+  // 홈으로 이동
+  switchPage('home', document.querySelector('.nav-btn[data-page="home"]'));
+}
+
+window.doLogout = function() {
+  if (unsubscribe) unsubscribe();
+  localStorage.removeItem('chuljo_user');
+  ME = null; TRIPS = [];
+  document.getElementById('bottomnav').style.display = 'none';
+  document.getElementById('admin-nav-btn').style.display = 'none';
+  switchPageRaw('login');
+  showToast('로그아웃 되었습니다');
+};
+
+/* ── Firestore 실시간 동기화 ────────────────────────────── */
+function startRealtimeSync() {
+  const q = query(collection(db, 'trips'), orderBy('createdAt', 'desc'));
+  document.getElementById('db-status').textContent = '연결중...';
+  document.getElementById('sync-dot').className = 'sync-dot offline';
+
+  unsubscribe = onSnapshot(q,
+    (snapshot) => {
+      TRIPS = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+      document.getElementById('db-status').textContent = '실시간 연결됨';
+      document.getElementById('sync-dot').className = 'sync-dot';
+      // 현재 페이지 리렌더
+      if (currentPage === 'home') renderHome();
+      else if (currentPage === 'mytrips') renderMyTrips();
+      else if (currentPage === 'admin') renderAdmin();
+      else if (currentPage === 'detail') {
+        const id = document.getElementById('detail-content').dataset.tripId;
+        if (id) renderDetail(id);
+      }
+    },
+    (err) => {
+      console.error(err);
+      document.getElementById('db-status').textContent = '연결 오류';
+      document.getElementById('sync-dot').className = 'sync-dot offline';
+      showToast('⚠️ DB 연결 오류가 발생했습니다');
+    }
+  );
+}
+
+/* ── Helpers ───────────────────────────────────────────── */
+function dday(ds) {
+  if (!ds) return '-';
+  const today = new Date(); today.setHours(0,0,0,0);
+  const d = new Date(ds); d.setHours(0,0,0,0);
+  const diff = Math.round((d - today) / 86400000);
+  if (diff === 0) return 'D-day';
+  if (diff > 0) return 'D-' + diff;
+  return 'D+' + Math.abs(diff);
+}
+function fmtDate(ds) {
+  if (!ds) return '-';
+  const p = ds.split('-'); return p[1] + '월 ' + p[2] + '일';
+}
+function fmtCost(n) { return Number(n).toLocaleString() + '원'; }
+function isMine(t) { return (t.applicants || []).some(a => a.kakao === ME?.kakao); }
+function isFull(t) { return (t.applicants || []).length >= (t.capacity || 0); }
+function isPastDeadline(t) { return t.deadline && new Date(t.deadline) < new Date(); }
+function canApply(t) { return !t.closed && !isFull(t) && !isPastDeadline(t) && !isMine(t); }
+function slotColor(pct) { if (pct >= 1) return 'var(--danger)'; if (pct >= 0.7) return 'var(--sand)'; return 'var(--fish)'; }
+
+/* ── Navigation ────────────────────────────────────────── */
+function switchPageRaw(name) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.getElementById('page-' + name).classList.add('active');
+  currentPage = name;
+}
+
+window.switchPage = function(name, btn) {
+  prevPage = currentPage === 'detail' ? 'home' : currentPage;
+  switchPageRaw(name);
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+  if (name === 'home') renderHome();
+  if (name === 'mytrips') renderMyTrips();
+  if (name === 'admin') renderAdmin();
+  document.querySelector('.scroll-area').scrollTop = 0;
+};
+
+window.goDetail = function(id) {
+  prevPage = currentPage;
+  switchPageRaw('detail');
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  renderDetail(id);
+  document.querySelector('.scroll-area').scrollTop = 0;
+};
+
+window.goBack = function() {
+  const target = prevPage === 'detail' ? 'home' : prevPage;
+  const btn = document.querySelector('.nav-btn[data-page="' + target + '"]');
+  switchPage(target, btn);
+};
+
+/* ── Home ──────────────────────────────────────────────── */
+function renderHome() {
+  const el = document.getElementById('trip-list');
+  if (!TRIPS.length) {
+    el.innerHTML = '<div class="empty"><i class="ti ti-fish-off"></i><p>등록된 출조가 없습니다</p></div>';
+    return;
+  }
+  el.innerHTML = TRIPS.map(t => {
+    const pct = (t.applicants || []).length / (t.capacity || 1);
+    const full = t.closed || isFull(t) || isPastDeadline(t);
+    const mine = isMine(t);
+    const bc = t.closed || isFull(t) ? 'b-closed' : mine ? 'b-mine' : pct >= 0.7 ? 'b-warn' : 'b-open';
+    const bt = t.closed ? '마감됨' : isFull(t) ? '정원마감' : mine ? '신청완료' : pct >= 0.7 ? '마감임박' : '모집중';
+    return `<div class="trip-card" onclick="goDetail('${t.id}')">
+      <div class="trip-card-top">
+        <div style="flex:1;min-width:0">
+          <div class="trip-title">${t.title}</div>
+          <div class="trip-date-row"><i class="ti ti-calendar" style="font-size:12px"></i>${fmtDate(t.date)} ${t.time||''} 출발</div>
+        </div>
+        <div class="badges">
+          <span class="dday">${dday(t.date)}</span>
+          <span class="status-badge ${bc}">${bt}</span>
+        </div>
+      </div>
+      <div class="trip-card-body">
+        <div class="trip-meta">
+          <div class="meta-item"><i class="ti ti-map-pin"></i>${t.location}</div>
+          <div class="meta-item"><i class="ti ti-wallet"></i>${fmtCost(t.cost)}</div>
+        </div>
+      </div>
+      <div class="trip-card-foot">
+        <span style="font-size:12px;font-weight:700;flex-shrink:0;color:${slotColor(pct)}">${(t.applicants||[]).length}/${t.capacity}명</span>
+        <div class="slot-bar"><div class="slot-fill" style="width:${Math.min(pct*100,100)}%;background:${slotColor(pct)}"></div></div>
+        <span style="font-size:11px;color:var(--text-hint);flex-shrink:0">마감 ${fmtDate(t.deadline)}</span>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+/* ── Detail ────────────────────────────────────────────── */
+function renderDetail(id) {
+  const t = TRIPS.find(x => x.id === id);
+  if (!t) return;
+  document.getElementById('detail-content').dataset.tripId = id;
+  const pct = (t.applicants||[]).length / (t.capacity||1);
+  const full = t.closed || isFull(t) || isPastDeadline(t);
+  const mine = isMine(t);
+  const showLink = full && mine;
+
+  let btnHtml = '';
+  if (showLink) {
+    btnHtml = `<div class="chat-reveal">
+      <div class="chat-reveal-title"><i class="ti ti-brand-hipchat"></i> 오픈채팅방이 열렸습니다!</div>
+      <button class="btn btn-kakao" onclick="openKakao('${t.kakaoLink||''}')">
+        <i class="ti ti-brand-kakao" style="font-size:20px"></i> 카카오 오픈채팅 입장하기
+      </button>
+      <p style="font-size:11px;color:var(--fish);opacity:.75;margin-top:8px">버튼을 눌러 출조 채팅방에 바로 입장하세요</p>
+    </div>`;
+  } else if (mine) {
+    btnHtml = `<button class="btn btn-success" style="margin-bottom:14px"><i class="ti ti-check"></i> 신청 완료 — 마감 후 채팅링크 공개</button>`;
+  } else if (full) {
+    btnHtml = `<button class="btn btn-disabled" disabled style="margin-bottom:14px">${t.closed||isFull(t)?'정원이 마감되었습니다':'모집 기간이 종료되었습니다'}</button>`;
+  } else {
+    btnHtml = `<button class="btn btn-primary" style="margin-bottom:14px" onclick="applyTrip('${id}')"><i class="ti ti-fish"></i> 출조 신청하기</button>`;
+  }
+
+  const listHtml = (t.applicants||[]).map((a, i) => {
+    const isMe = a.kakao === ME?.kakao;
+    return `<div class="applicant-row">
+      <div class="avatar${isMe?' mine':''}">${a.name[0]}</div>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:13px;font-weight:700">${a.name}${isMe?' <span style="font-size:11px;color:var(--fish)">(나)</span>':''}</div>
+        <div style="font-size:11px;color:var(--text-hint)">@${a.kakao}</div>
+      </div>
+      <div style="font-size:11px;color:var(--text-hint)">${a.time||''}</div>
+    </div>`;
+  }).join('');
+
+  const noteHtml = t.note
+    ? `<div style="background:var(--bg);border-radius:var(--radius-xs);padding:11px 13px;margin-bottom:14px;font-size:13px;color:var(--text-sub);border-left:3px solid var(--ocean-mid)">${t.note}</div>`
+    : '';
+
+  document.getElementById('detail-content').innerHTML = `
+    <div class="detail-hero">
+      <div class="back-row">
+        <button class="back-btn" onclick="goBack()"><i class="ti ti-arrow-left"></i></button>
+        <span style="color:rgba(255,255,255,.7);font-size:13px">목록으로</span>
+      </div>
+      <div class="detail-title">${t.title}</div>
+      <div class="detail-sub">
+        <i class="ti ti-calendar"></i>${fmtDate(t.date)} ${t.time||''} 출발
+        &nbsp;·&nbsp;<i class="ti ti-map-pin"></i>${t.location}
+      </div>
+    </div>
+    <div class="info-grid">
+      <div class="info-box"><div class="info-label">1인 비용</div><div class="info-val accent">${fmtCost(t.cost)}</div></div>
+      <div class="info-box"><div class="info-label">모집 정원</div><div class="info-val">${t.capacity}명</div></div>
+      <div class="info-box"><div class="info-label">신청 인원</div><div class="info-val" style="color:${slotColor(pct)}">${(t.applicants||[]).length}명</div></div>
+      <div class="info-box"><div class="info-label">모집 마감</div><div class="info-val" style="font-size:13px">${fmtDate(t.deadline)}</div></div>
+    </div>
+    <div class="prog-box">
+      <div class="prog-header">
+        <span style="font-size:13px;font-weight:600;color:var(--text-sub)">신청 현황</span>
+        <span style="font-size:14px;font-weight:800;color:${slotColor(pct)}">${(t.applicants||[]).length} / ${t.capacity}명</span>
+      </div>
+      <div class="prog-bar"><div class="prog-fill" style="width:${Math.min(pct*100,100)}%;background:${slotColor(pct)}"></div></div>
+    </div>
+    ${noteHtml}
+    ${btnHtml}
+    <div class="applicants-section">
+      <div class="applicants-header">
+        <span>신청자 명단</span>
+        <span style="font-size:13px;font-weight:800;color:var(--ocean)">${(t.applicants||[]).length}명</span>
+      </div>
+      ${listHtml || '<div style="padding:16px;text-align:center;color:var(--text-hint);font-size:13px">아직 신청자가 없습니다</div>'}
+    </div>`;
+}
+
+/* ── Apply ─────────────────────────────────────────────── */
+window.applyTrip = async function(id) {
+  const t = TRIPS.find(x => x.id === id);
+  if (!t || !canApply(t)) return;
+  const now = new Date();
+  const timeStr = `${now.getMonth()+1}/${now.getDate()} ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+  const newApplicants = [...(t.applicants||[]), { name: ME.name, kakao: ME.kakao, phone: ME.phone||'', time: timeStr }];
+  try {
+    await updateDoc(doc(db, 'trips', id), { applicants: newApplicants });
+    showToast('✅ 신청 완료! 마감 후 채팅링크가 공개됩니다');
+  } catch (e) {
+    showToast('⚠️ 신청 중 오류가 발생했습니다');
+    console.error(e);
+  }
+};
+
+window.openKakao = function(url) {
+  if (url && url.startsWith('http')) window.open(url, '_blank');
+  else showToast('카카오 오픈채팅 링크를 확인해주세요');
+};
+
+/* ── My Trips ──────────────────────────────────────────── */
+function renderMyTrips() {
+  const el = document.getElementById('mytrips-list');
+  const mine = TRIPS.filter(t => isMine(t));
+  if (!mine.length) {
+    el.innerHTML = '<div class="empty"><i class="ti ti-clipboard-list"></i><p>신청한 출조가 없습니다</p></div>';
+    return;
+  }
+  el.innerHTML = mine.map(t => {
+    const full = t.closed || isFull(t) || isPastDeadline(t);
+    return `<div class="my-trip-card" onclick="goDetail('${t.id}')">
+      <div class="my-trip-head">
+        <div class="my-trip-title">${t.title}</div>
+        <span class="dday" style="font-size:11px">${dday(t.date)}</span>
+      </div>
+      <div class="my-trip-body">
+        <div style="font-size:12px;color:var(--text-sub)">
+          <div style="margin-bottom:3px"><i class="ti ti-calendar" style="font-size:12px;color:var(--ocean-mid)"></i> ${fmtDate(t.date)} ${t.time||''}</div>
+          <div><i class="ti ti-map-pin" style="font-size:12px;color:var(--ocean-mid)"></i> ${t.location}</div>
+        </div>
+        <span style="font-size:12px;font-weight:700;color:${full?'var(--fish)':'var(--sand)'}">
+          ${full?'<i class="ti ti-link"></i> 채팅링크 공개':'<i class="ti ti-clock"></i> 모집중'}
+        </span>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+/* ── Admin ─────────────────────────────────────────────── */
+function renderAdmin() {
+  if (!ME?.isAdmin) {
+    document.getElementById('admin-list').innerHTML = '<div class="empty"><i class="ti ti-lock"></i><p>운영자 권한이 필요합니다</p></div>';
+    return;
+  }
+  const el = document.getElementById('admin-list');
+  if (!TRIPS.length) {
+    el.innerHTML = '<div class="empty"><i class="ti ti-fish-off"></i><p>등록된 출조가 없습니다</p></div>';
+    return;
+  }
+  el.innerHTML = TRIPS.map(t => {
+    const full = t.closed || isFull(t);
+    const chips = (t.applicants||[]).map(a => `<span class="chip">${a.name}</span>`).join('');
+    const statusBtn = full
+      ? `<span class="status-badge" style="background:var(--danger-light);color:var(--danger);font-size:11px">마감됨</span>`
+      : `<button class="btn btn-danger btn-sm" onclick="closeTrip('${t.id}',event)">마감처리</button>`;
+    return `<div class="admin-card">
+      <div class="admin-card-head">
+        <div style="flex:1;min-width:0">
+          <div style="font-size:14px;font-weight:700;margin-bottom:2px">${t.title}</div>
+          <div style="font-size:11px;color:var(--text-hint)">${fmtDate(t.date)} · ${t.location}</div>
+        </div>
+        ${statusBtn}
+      </div>
+      <div class="admin-card-body">
+        <div class="stats-row">
+          <div class="stat-box"><div class="stat-num">${(t.applicants||[]).length}</div><div class="stat-lab">신청자</div></div>
+          <div class="stat-box"><div class="stat-num">${(t.capacity||0)-(t.applicants||[]).length}</div><div class="stat-lab">남은자리</div></div>
+          <div class="stat-box"><div class="stat-num">${Math.round(t.cost*(t.applicants||[]).length/10000)}만</div><div class="stat-lab">예상합계</div></div>
+        </div>
+        <div class="kakao-link-block">
+          <div class="kakao-link-label"><i class="ti ti-brand-kakao" style="font-size:14px"></i> 오픈채팅 링크 ${full?'<span style="font-weight:400;color:#A07020">(신청자에게 공개됨)</span>':'<span style="font-weight:400;color:#A07020">(마감 후 자동 공개)</span>'}</div>
+          <input class="kakao-link-input" value="${t.kakaoLink||''}" placeholder="https://open.kakao.com/o/..."
+            onblur="updateKakaoLink('${t.id}',this.value)">
+        </div>
+        ${chips ? `<div style="margin-bottom:10px">${chips}</div>` : ''}
+        <button class="btn btn-outline" style="font-size:13px;padding:9px;border:.5px solid var(--border)" onclick="goDetail('${t.id}')">
+          <i class="ti ti-eye"></i> 상세 보기
+        </button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+window.closeTrip = async function(id, e) {
+  if (e) e.stopPropagation();
+  try {
+    await updateDoc(doc(db, 'trips', id), { closed: true });
+    showToast('✅ 마감 처리 완료 — 신청자에게 채팅링크 공개됨');
+  } catch (err) {
+    showToast('⚠️ 오류가 발생했습니다'); console.error(err);
+  }
+};
+
+window.updateKakaoLink = async function(id, val) {
+  try {
+    await updateDoc(doc(db, 'trips', id), { kakaoLink: val });
+  } catch (err) { console.error(err); }
+};
+
+/* ── New Trip Modal ─────────────────────────────────────── */
+window.openNewModal = function() {
+  ['f-title','f-location','f-kakao','f-note'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('f-date').value = '';
+  document.getElementById('f-time').value = '05:00';
+  document.getElementById('f-capacity').value = '10';
+  document.getElementById('f-cost').value = '80000';
+  document.getElementById('f-deadline').value = '';
+  document.getElementById('new-modal').classList.add('open');
+};
+
+window.closeModal = function(id) {
+  document.getElementById(id).classList.remove('open');
+};
+
+window.submitNewTrip = async function() {
+  const title = document.getElementById('f-title').value.trim();
+  const date = document.getElementById('f-date').value;
+  const loc = document.getElementById('f-location').value.trim();
+  if (!title || !date || !loc) { showToast('⚠️ 출조명, 날짜, 장소는 필수입니다'); return; }
+  try {
+    await addDoc(collection(db, 'trips'), {
+      title,
+      date,
+      time: document.getElementById('f-time').value || '05:00',
+      location: loc,
+      capacity: parseInt(document.getElementById('f-capacity').value) || 10,
+      cost: parseInt(document.getElementById('f-cost').value) || 0,
+      deadline: document.getElementById('f-deadline').value,
+      kakaoLink: document.getElementById('f-kakao').value.trim(),
+      note: document.getElementById('f-note').value.trim(),
+      closed: false,
+      applicants: [],
+      createdBy: ME.kakao,
+      createdAt: serverTimestamp()
+    });
+    closeModal('new-modal');
+    showToast('✅ 출조가 등록되었습니다');
+  } catch (err) {
+    showToast('⚠️ 등록 중 오류가 발생했습니다'); console.error(err);
+  }
+};
+
+/* ── Toast ─────────────────────────────────────────────── */
+window.showToast = function(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), 2600);
+};
+
+/* ── Modal outside click ────────────────────────────────── */
+document.getElementById('new-modal').addEventListener('click', function(e) {
+  if (e.target === this) closeModal('new-modal');
+});
+</script>
+</body>
+</html>
