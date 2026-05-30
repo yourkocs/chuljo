@@ -342,7 +342,8 @@ body{font-family:'Noto Sans KR',sans-serif;background:var(--bg);color:var(--text
 <div class="modal-overlay" id="new-modal">
   <div class="modal">
     <div class="modal-handle"></div>
-    <div class="modal-title"><i class="ti ti-fish"></i> 새 출조 등록</div>
+    <div class="modal-title" id="trip-modal-title"><i class="ti ti-fish"></i> 새 출조 등록</div>
+    <input type="hidden" id="f-editing-id" value="">
     <div class="form-group">
       <label class="form-label">출조명 *</label>
       <input class="form-input" id="f-title" placeholder="예) 서해 광어 선상 출조">
@@ -767,7 +768,15 @@ function renderAdmin() {
           <div style="font-size:14px;font-weight:700;margin-bottom:2px">${t.title}</div>
           <div style="font-size:11px;color:var(--text-hint)">${fmtDate(t.date)} · ${t.location}</div>
         </div>
-        ${statusBtn}
+        <div style="display:flex;gap:6px;align-items:center;flex-shrink:0">
+          <button class="btn btn-outline btn-sm" onclick="openEditModal('${t.id}',event)" style="border:.5px solid var(--border);padding:7px 11px">
+            <i class="ti ti-edit" style="font-size:14px"></i>
+          </button>
+          <button class="btn btn-sm" onclick="deleteTrip('${t.id}',event)" style="background:var(--danger-light);color:var(--danger);padding:7px 11px">
+            <i class="ti ti-trash" style="font-size:14px"></i>
+          </button>
+          ${statusBtn}
+        </div>
       </div>
       <div class="admin-card-body">
         <div class="stats-row">
@@ -805,14 +814,34 @@ window.updateKakaoLink = async function(id, val) {
   } catch (err) { console.error(err); }
 };
 
-/* ── New Trip Modal ─────────────────────────────────────── */
+/* ── New / Edit Trip Modal ──────────────────────────────── */
 window.openNewModal = function() {
+  document.getElementById('f-editing-id').value = '';
+  document.getElementById('trip-modal-title').innerHTML = '<i class="ti ti-fish"></i> 새 출조 등록';
   ['f-title','f-location','f-kakao','f-note'].forEach(id => document.getElementById(id).value = '');
   document.getElementById('f-date').value = '';
   document.getElementById('f-time').value = '05:00';
   document.getElementById('f-capacity').value = '10';
   document.getElementById('f-cost').value = '80000';
   document.getElementById('f-deadline').value = '';
+  document.getElementById('new-modal').classList.add('open');
+};
+
+window.openEditModal = function(id, e) {
+  if (e) e.stopPropagation();
+  const t = TRIPS.find(x => x.id === id);
+  if (!t) return;
+  document.getElementById('f-editing-id').value = id;
+  document.getElementById('trip-modal-title').innerHTML = '<i class="ti ti-edit"></i> 출조 수정';
+  document.getElementById('f-title').value = t.title || '';
+  document.getElementById('f-date').value = t.date || '';
+  document.getElementById('f-time').value = t.time || '05:00';
+  document.getElementById('f-location').value = t.location || '';
+  document.getElementById('f-capacity').value = t.capacity || 10;
+  document.getElementById('f-cost').value = t.cost || 0;
+  document.getElementById('f-deadline').value = t.deadline || '';
+  document.getElementById('f-kakao').value = t.kakaoLink || '';
+  document.getElementById('f-note').value = t.note || '';
   document.getElementById('new-modal').classList.add('open');
 };
 
@@ -825,26 +854,51 @@ window.submitNewTrip = async function() {
   const date = document.getElementById('f-date').value;
   const loc = document.getElementById('f-location').value.trim();
   if (!title || !date || !loc) { showToast('⚠️ 출조명, 날짜, 장소는 필수입니다'); return; }
+
+  const editingId = document.getElementById('f-editing-id').value;
+  const data = {
+    title,
+    date,
+    time: document.getElementById('f-time').value || '05:00',
+    location: loc,
+    capacity: parseInt(document.getElementById('f-capacity').value) || 10,
+    cost: parseInt(document.getElementById('f-cost').value) || 0,
+    deadline: document.getElementById('f-deadline').value,
+    kakaoLink: document.getElementById('f-kakao').value.trim(),
+    note: document.getElementById('f-note').value.trim(),
+  };
+
   try {
-    await addDoc(collection(db, 'trips'), {
-      title,
-      date,
-      time: document.getElementById('f-time').value || '05:00',
-      location: loc,
-      capacity: parseInt(document.getElementById('f-capacity').value) || 10,
-      cost: parseInt(document.getElementById('f-cost').value) || 0,
-      deadline: document.getElementById('f-deadline').value,
-      kakaoLink: document.getElementById('f-kakao').value.trim(),
-      note: document.getElementById('f-note').value.trim(),
-      closed: false,
-      applicants: [],
-      createdBy: ME.kakao,
-      createdAt: serverTimestamp()
-    });
-    closeModal('new-modal');
-    showToast('✅ 출조가 등록되었습니다');
+    if (editingId) {
+      // 수정 모드
+      await updateDoc(doc(db, 'trips', editingId), data);
+      closeModal('new-modal');
+      showToast('✅ 출조가 수정되었습니다');
+    } else {
+      // 신규 등록
+      await addDoc(collection(db, 'trips'), {
+        ...data,
+        closed: false,
+        applicants: [],
+        createdBy: ME.kakao,
+        createdAt: serverTimestamp()
+      });
+      closeModal('new-modal');
+      showToast('✅ 출조가 등록되었습니다');
+    }
   } catch (err) {
-    showToast('⚠️ 등록 중 오류가 발생했습니다'); console.error(err);
+    showToast('⚠️ 저장 중 오류가 발생했습니다'); console.error(err);
+  }
+};
+
+window.deleteTrip = async function(id, e) {
+  if (e) e.stopPropagation();
+  if (!confirm('이 출조를 삭제하시겠습니까?\n신청자 정보도 모두 삭제됩니다.')) return;
+  try {
+    await deleteDoc(doc(db, 'trips', id));
+    showToast('🗑️ 출조가 삭제되었습니다');
+  } catch (err) {
+    showToast('⚠️ 삭제 중 오류가 발생했습니다'); console.error(err);
   }
 };
 
