@@ -746,49 +746,83 @@ function renderMyTrips() {
 }
 
 /* ── Admin ─────────────────────────────────────────────── */
+let adminTab = 'active'; // 'active' | 'past'
+
 function renderAdmin() {
   if (!ME?.isAdmin) {
     document.getElementById('admin-list').innerHTML = '<div class="empty"><i class="ti ti-lock"></i><p>운영자 권한이 필요합니다</p></div>';
     return;
   }
+
+  // 탭 분류: 지난 출조 = 마감됐거나 날짜가 오늘 이전
+  const today = new Date(); today.setHours(0,0,0,0);
+  const activeTrips = TRIPS.filter(t => !t.closed && !isFull(t) && new Date(t.date) >= today);
+  const pastTrips   = TRIPS.filter(t => t.closed || isFull(t) || new Date(t.date) < today);
+  const list = adminTab === 'active' ? activeTrips : pastTrips;
+
+  const tabBar = `
+    <div style="display:flex;background:var(--card);border-radius:var(--radius-sm);border:.5px solid var(--border);padding:4px;margin-bottom:14px;gap:4px">
+      <button onclick="switchAdminTab('active')" style="flex:1;padding:8px;border:none;border-radius:8px;font-size:13px;font-weight:700;font-family:inherit;cursor:pointer;transition:all .2s;
+        background:${adminTab==='active'?'var(--ocean)':'transparent'};color:${adminTab==='active'?'#fff':'var(--text-hint)'}">
+        모집중 <span style="font-size:11px;opacity:.8">(${activeTrips.length})</span>
+      </button>
+      <button onclick="switchAdminTab('past')" style="flex:1;padding:8px;border:none;border-radius:8px;font-size:13px;font-weight:700;font-family:inherit;cursor:pointer;transition:all .2s;
+        background:${adminTab==='past'?'var(--ocean)':'transparent'};color:${adminTab==='past'?'#fff':'var(--text-hint)'}">
+        지난 출조 <span style="font-size:11px;opacity:.8">(${pastTrips.length})</span>
+      </button>
+    </div>`;
+
   const el = document.getElementById('admin-list');
-  if (!TRIPS.length) {
-    el.innerHTML = '<div class="empty"><i class="ti ti-fish-off"></i><p>등록된 출조가 없습니다</p></div>';
+
+  if (!list.length) {
+    el.innerHTML = tabBar + `<div class="empty"><i class="ti ti-fish-off"></i><p>${adminTab==='active'?'모집 중인 출조가 없습니다':'지난 출조가 없습니다'}</p></div>`;
     return;
   }
-  el.innerHTML = TRIPS.map(t => {
-    const full = t.closed || isFull(t);
-    const chips = (t.applicants||[]).map(a => `<span class="chip">${a.name}</span>`).join('');
-    const statusBtn = full
-      ? `<span class="status-badge" style="background:var(--danger-light);color:var(--danger);font-size:11px">마감됨</span>`
-      : `<button class="btn btn-danger btn-sm" onclick="closeTrip('${t.id}',event)">마감처리</button>`;
+
+  el.innerHTML = tabBar + list.map(t => {
+    const isPast = adminTab === 'past';
+    const full   = t.closed || isFull(t);
+    const chips  = (t.applicants||[]).map(a => `<span class="chip">${a.name}</span>`).join('');
+
+    // 진행중: 수정 + 마감처리 버튼 / 지난출조: 삭제 버튼만
+    const actionBtns = isPast
+      ? `<button class="btn btn-sm" onclick="deleteTrip('${t.id}',event)"
+           style="background:var(--danger-light);color:var(--danger);padding:7px 12px;border-radius:8px;border:none;cursor:pointer;font-family:inherit;font-weight:700;display:flex;align-items:center;gap:4px">
+           <i class="ti ti-trash" style="font-size:14px"></i> 삭제
+         </button>`
+      : `<div style="display:flex;gap:6px;align-items:center">
+           <button class="btn btn-outline btn-sm" onclick="openEditModal('${t.id}',event)"
+             style="border:.5px solid var(--border);padding:7px 11px;border-radius:8px">
+             <i class="ti ti-edit" style="font-size:14px"></i>
+           </button>
+           ${full
+             ? `<span class="status-badge" style="background:var(--danger-light);color:var(--danger);font-size:11px">마감됨</span>`
+             : `<button class="btn btn-danger btn-sm" onclick="closeTrip('${t.id}',event)">마감처리</button>`
+           }
+         </div>`;
+
     return `<div class="admin-card">
       <div class="admin-card-head">
         <div style="flex:1;min-width:0">
           <div style="font-size:14px;font-weight:700;margin-bottom:2px">${t.title}</div>
           <div style="font-size:11px;color:var(--text-hint)">${fmtDate(t.date)} · ${t.location}</div>
         </div>
-        <div style="display:flex;gap:6px;align-items:center;flex-shrink:0">
-          <button class="btn btn-outline btn-sm" onclick="openEditModal('${t.id}',event)" style="border:.5px solid var(--border);padding:7px 11px">
-            <i class="ti ti-edit" style="font-size:14px"></i>
-          </button>
-          <button class="btn btn-sm" onclick="deleteTrip('${t.id}',event)" style="background:var(--danger-light);color:var(--danger);padding:7px 11px">
-            <i class="ti ti-trash" style="font-size:14px"></i>
-          </button>
-          ${statusBtn}
-        </div>
+        ${actionBtns}
       </div>
       <div class="admin-card-body">
         <div class="stats-row">
           <div class="stat-box"><div class="stat-num">${(t.applicants||[]).length}</div><div class="stat-lab">신청자</div></div>
           <div class="stat-box"><div class="stat-num">${(t.capacity||0)-(t.applicants||[]).length}</div><div class="stat-lab">남은자리</div></div>
-          <div class="stat-box"><div class="stat-num">${Math.round(t.cost*(t.applicants||[]).length/10000)}만</div><div class="stat-lab">예상합계</div></div>
+          <div class="stat-box"><div class="stat-num">${Math.round((t.cost||0)*(t.applicants||[]).length/10000)}만</div><div class="stat-lab">예상합계</div></div>
         </div>
+        ${!isPast ? `
         <div class="kakao-link-block">
-          <div class="kakao-link-label"><i class="ti ti-brand-kakao" style="font-size:14px"></i> 오픈채팅 링크 ${full?'<span style="font-weight:400;color:#A07020">(신청자에게 공개됨)</span>':'<span style="font-weight:400;color:#A07020">(마감 후 자동 공개)</span>'}</div>
+          <div class="kakao-link-label"><i class="ti ti-brand-kakao" style="font-size:14px"></i> 오픈채팅 링크
+            ${full?'<span style="font-weight:400;color:#A07020">(신청자에게 공개됨)</span>':'<span style="font-weight:400;color:#A07020">(마감 후 자동 공개)</span>'}
+          </div>
           <input class="kakao-link-input" value="${t.kakaoLink||''}" placeholder="https://open.kakao.com/o/..."
             onblur="updateKakaoLink('${t.id}',this.value)">
-        </div>
+        </div>` : ''}
         ${chips ? `<div style="margin-bottom:10px">${chips}</div>` : ''}
         <button class="btn btn-outline" style="font-size:13px;padding:9px;border:.5px solid var(--border)" onclick="goDetail('${t.id}')">
           <i class="ti ti-eye"></i> 상세 보기
@@ -797,6 +831,11 @@ function renderAdmin() {
     </div>`;
   }).join('');
 }
+
+window.switchAdminTab = function(tab) {
+  adminTab = tab;
+  renderAdmin();
+};
 
 window.closeTrip = async function(id, e) {
   if (e) e.stopPropagation();
