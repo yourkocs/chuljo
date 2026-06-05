@@ -289,14 +289,38 @@ body{font-family:'Noto Sans KR',sans-serif;background:var(--bg);color:var(--text
     <!-- 운영자 -->
     <div id="page-admin" class="page">
       <p class="sec-title" style="padding-top:4px">운영자 대시보드</p>
-      <button class="btn btn-primary" style="margin-bottom:14px" onclick="openNewModal()">
-        <i class="ti ti-plus"></i> 새 출조 등록
-      </button>
-      <div class="tab-bar">
-        <button class="tab-btn2 on" id="atab-active" onclick="switchAdminTab('active')">모집중</button>
-        <button class="tab-btn2" id="atab-past" onclick="switchAdminTab('past')">지난 출조</button>
+      <!-- 운영자 메인 탭: 출조관리 / 회원관리 -->
+      <div class="tab-bar" style="margin-bottom:14px">
+        <button class="tab-btn2 on" id="amain-trip" onclick="switchAdminMainTab('trip')"><i class="ti ti-fish" style="font-size:14px"></i> 출조관리</button>
+        <button class="tab-btn2" id="amain-member" onclick="switchAdminMainTab('member')"><i class="ti ti-users" style="font-size:14px"></i> 회원관리</button>
       </div>
-      <div id="admin-list"></div>
+
+      <!-- 출조관리 섹션 -->
+      <div id="admin-trip-section">
+        <button class="btn btn-primary" style="margin-bottom:14px" onclick="openNewModal()">
+          <i class="ti ti-plus"></i> 새 출조 등록
+        </button>
+        <div class="tab-bar">
+          <button class="tab-btn2 on" id="atab-active" onclick="switchAdminTab('active')">모집중</button>
+          <button class="tab-btn2" id="atab-past" onclick="switchAdminTab('past')">지난 출조</button>
+        </div>
+        <div id="admin-list"></div>
+      </div>
+
+      <!-- 회원관리 섹션 -->
+      <div id="admin-member-section" style="display:none">
+        <!-- 검색 -->
+        <div style="display:flex;gap:8px;margin-bottom:14px">
+          <input class="form-input" id="member-search-input" placeholder="이름 또는 카톡 아이디 검색" oninput="filterMembers()" style="flex:1">
+          <button class="btn btn-outline btn-sm" onclick="filterMembers()" style="flex-shrink:0;border:.5px solid var(--border)">
+            <i class="ti ti-search"></i>
+          </button>
+        </div>
+        <!-- 통계 -->
+        <div class="stats-row" id="member-stats" style="margin-bottom:14px"></div>
+        <!-- 목록 -->
+        <div id="member-list"></div>
+      </div>
     </div>
 
     <!-- 프로필 -->
@@ -608,9 +632,14 @@ function startSync() {
 
   // 회원 목록 구독 (운영자만)
   if (ME?.isAdmin) {
-    unsubMembers = onSnapshot(collection(db, 'users'), snap => {
-      MEMBERS = snap.docs.map(d => ({ kakao: d.id, ...d.data() }));
-    });
+    unsubMembers = onSnapshot(
+      query(collection(db, 'users'), orderBy('createdAt', 'desc')),
+      snap => {
+        MEMBERS = snap.docs.map(d => ({ kakao: d.id, ...d.data() }));
+        // 회원관리 탭 열려있으면 즉시 갱신
+        if (currentPage === 'admin' && adminMainTab === 'member') renderMembers();
+      }
+    );
   }
 }
 
@@ -822,6 +851,102 @@ function renderMyList(filterDate) {
 }
 
 /* ── Admin ───────────────────────────────────── */
+/* ── 운영자 메인 탭 전환 ─────────────────────── */
+let adminMainTab = 'trip';
+
+window.switchAdminMainTab = function(tab) {
+  adminMainTab = tab;
+  document.getElementById('amain-trip').className  = 'tab-btn2' + (tab==='trip'?' on':'');
+  document.getElementById('amain-member').className = 'tab-btn2' + (tab==='member'?' on':'');
+  document.getElementById('admin-trip-section').style.display   = tab==='trip'?'block':'none';
+  document.getElementById('admin-member-section').style.display = tab==='member'?'block':'none';
+  if (tab==='member') renderMembers();
+};
+
+/* ── 회원 관리 ───────────────────────────────── */
+function renderMembers() {
+  const all = MEMBERS;
+  // 통계
+  const total   = all.length;
+  const admins  = all.filter(m=>m.isAdmin).length;
+  const normals = total - admins;
+  document.getElementById('member-stats').innerHTML = `
+    <div class="stat-box"><div class="stat-num">${total}</div><div class="stat-lab">전체 회원</div></div>
+    <div class="stat-box"><div class="stat-num">${admins}</div><div class="stat-lab">운영자</div></div>
+    <div class="stat-box"><div class="stat-num">${normals}</div><div class="stat-lab">일반 회원</div></div>`;
+  filterMembers();
+}
+
+window.filterMembers = function() {
+  const kw = (document.getElementById('member-search-input')?.value||'').trim().toLowerCase();
+  const filtered = kw
+    ? MEMBERS.filter(m => m.name?.includes(kw) || m.kakao?.toLowerCase().includes(kw))
+    : MEMBERS;
+
+  const el = document.getElementById('member-list');
+  if (!filtered.length) {
+    el.innerHTML = '<div class="empty"><i class="ti ti-users-minus"></i><p>회원이 없습니다</p></div>';
+    return;
+  }
+
+  el.innerHTML = filtered.map(m => {
+    const joinDate = m.createdAt?.toDate ? m.createdAt.toDate().toLocaleDateString('ko-KR') : '-';
+    const myTrips  = TRIPS.filter(t=>(t.applicants||[]).some(a=>a.kakao===m.kakao)).length;
+    return `<div class="admin-card" style="margin-bottom:10px">
+      <div class="admin-card-head">
+        <div style="display:flex;align-items:center;gap:10px;flex:1;min-width:0">
+          <div class="avatar${m.isAdmin?' mine':''}" style="width:38px;height:38px;font-size:15px;flex-shrink:0">${m.name?.[0]||'?'}</div>
+          <div style="min-width:0">
+            <div style="font-size:14px;font-weight:700;display:flex;align-items:center;gap:6px">
+              ${m.name}
+              ${m.isAdmin?'<span style="font-size:10px;background:var(--fish-light);color:var(--fish);padding:2px 7px;border-radius:20px;font-weight:700">운영자</span>':''}
+            </div>
+            <div style="font-size:11px;color:var(--text-hint);margin-top:2px">@${m.kakao}</div>
+          </div>
+        </div>
+        <div style="display:flex;gap:6px;flex-shrink:0">
+          <button class="btn btn-sm" onclick="toggleAdminRole('${m.kakao}',${!m.isAdmin})"
+            style="background:${m.isAdmin?'var(--danger-light)':'var(--fish-light)'};color:${m.isAdmin?'var(--danger)':'var(--fish)'};padding:7px 10px;border:none;border-radius:8px;cursor:pointer;font-family:inherit;font-weight:700;font-size:12px">
+            ${m.isAdmin?'권한 해제':'운영자 지정'}
+          </button>
+          <button class="btn btn-sm" onclick="deleteMember('${m.kakao}','${m.name}')"
+            style="background:var(--bg);color:var(--text-hint);padding:7px 10px;border:.5px solid var(--border);border-radius:8px;cursor:pointer;font-family:inherit;font-weight:700;font-size:12px">
+            <i class="ti ti-trash" style="font-size:13px"></i>
+          </button>
+        </div>
+      </div>
+      <div style="padding:0 14px 12px;display:flex;gap:16px;flex-wrap:wrap">
+        <div style="font-size:12px;color:var(--text-sub);display:flex;align-items:center;gap:4px">
+          <i class="ti ti-phone" style="font-size:13px;color:var(--ocean-mid)"></i>${m.phone||'-'}
+        </div>
+        <div style="font-size:12px;color:var(--text-sub);display:flex;align-items:center;gap:4px">
+          <i class="ti ti-fish" style="font-size:13px;color:var(--ocean-mid)"></i>출조 ${myTrips}회 참가
+        </div>
+        <div style="font-size:12px;color:var(--text-sub);display:flex;align-items:center;gap:4px">
+          <i class="ti ti-calendar" style="font-size:13px;color:var(--ocean-mid)"></i>가입 ${joinDate}
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+};
+
+window.toggleAdminRole = async function(kakao, makeAdmin) {
+  if (!confirm(makeAdmin ? `${kakao} 님을 운영자로 지정할까요?` : `${kakao} 님의 운영자 권한을 해제할까요?`)) return;
+  try {
+    await updateDoc(doc(db, 'users', kakao), { isAdmin: makeAdmin });
+    showToast(makeAdmin ? '✅ 운영자로 지정되었습니다' : '✅ 운영자 권한이 해제되었습니다');
+  } catch(e) { showToast('⚠️ 변경 중 오류 발생'); console.error(e); }
+};
+
+window.deleteMember = async function(kakao, name) {
+  if (!confirm(`${name} 님을 탈퇴 처리할까요?
+모든 데이터가 삭제됩니다.`)) return;
+  try {
+    await deleteDoc(doc(db, 'users', kakao));
+    showToast(`🗑️ ${name} 님이 탈퇴 처리되었습니다`);
+  } catch(e) { showToast('⚠️ 삭제 중 오류 발생'); console.error(e); }
+};
+
 window.switchAdminTab=function(tab){
   adminTab=tab;
   document.getElementById('atab-active').className='tab-btn2'+(tab==='active'?' on':'');
