@@ -143,6 +143,7 @@ body{font-family:'Noto Sans KR',sans-serif;background:var(--bg);color:var(--text
 .form-group{margin-bottom:13px}
 .form-label{font-size:12px;font-weight:700;color:var(--text-sub);margin-bottom:5px;display:block}
 .form-input{width:100%;padding:11px 13px;border:1px solid var(--border);border-radius:var(--radius-xs);font-size:14px;font-family:inherit;background:var(--bg);color:var(--text);outline:none;transition:border .2s;-webkit-appearance:none}
+textarea.form-input{resize:vertical;min-height:110px;line-height:1.6}
 .form-input:focus{border-color:var(--ocean-mid);background:#fff}
 .form-row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .form-hint{font-size:11px;color:var(--text-hint);margin-top:4px}
@@ -398,7 +399,11 @@ body{font-family:'Noto Sans KR',sans-serif;background:var(--bg);color:var(--text
     </div>
     <div class="form-group"><label class="form-label">모집 마감일</label><input class="form-input" type="date" id="f-deadline"></div>
     <div class="form-group"><label class="form-label">카카오 오픈채팅 링크</label><input class="form-input" id="f-kakao" placeholder="https://open.kakao.com/o/..."><div class="form-hint">* 마감 후 신청자에게만 공개됩니다</div></div>
-    <div class="form-group"><label class="form-label">안내사항</label><input class="form-input" id="f-note" placeholder="예) 낚시대 개인 지참, 미끼 제공"></div>
+    <div class="form-group">
+      <label class="form-label">안내사항</label>
+      <textarea class="form-input" id="f-note" placeholder="예) 낚시대 개인 지참&#10;미끼 현장 제공&#10;구명조끼 필수" rows="5" style="resize:vertical;min-height:110px;line-height:1.6"></textarea>
+      <div class="form-hint">Enter로 줄바꿈 가능합니다</div>
+    </div>
     <div style="display:flex;gap:10px;margin-top:4px">
       <button class="btn btn-primary" style="flex:1" onclick="submitNewTrip()"><i class="ti ti-check"></i> 저장하기</button>
       <button class="btn btn-outline" style="flex:0 0 72px;border:.5px solid var(--border)" onclick="closeModal('new-modal')">취소</button>
@@ -818,7 +823,7 @@ function renderDetail(id) {
       </div>
       <div class="prog-bar"><div class="prog-fill" style="width:${Math.min(pct*100,100)}%;background:${slotColor(pct)}"></div></div>
     </div>
-    ${t.note?`<div style="background:var(--bg);border-radius:var(--radius-xs);padding:11px 13px;margin-bottom:14px;font-size:13px;color:var(--text-sub);border-left:3px solid var(--ocean-mid)">${t.note}</div>`:''}
+    ${t.note?`<div style="background:var(--bg);border-radius:var(--radius-xs);padding:11px 13px;margin-bottom:14px;font-size:13px;color:var(--text-sub);border-left:3px solid var(--ocean-mid);white-space:pre-line">${t.note}</div>`:''}
     ${btnHtml}
     <div class="applicants-section">
       <div class="applicants-header"><span>신청자 명단</span><span style="font-size:13px;font-weight:800;color:var(--ocean)">${(t.applicants||[]).length}명</span></div>
@@ -1187,7 +1192,9 @@ window.saveProfile = async function() {
 window.showToast=function(msg){const el=document.getElementById('toast');el.textContent=msg;el.classList.add('show');setTimeout(()=>el.classList.remove('show'),2600);};
 
 /* ── Modal outside click ─────────────────────── */
-['new-modal','add-member-modal','edit-profile-modal'].forEach(id=>{
+// 새 출조 등록 모달은 실수로 닫히지 않도록 외부 클릭 비활성화
+// 회원 등록, 프로필 수정 모달만 외부 클릭 시 닫힘
+['add-member-modal','edit-profile-modal'].forEach(id=>{
   document.getElementById(id).addEventListener('click',function(e){if(e.target===this)closeModal(id);});
 });
 </script>
