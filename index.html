@@ -9,6 +9,7 @@
 <title>출조마당 🎣</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css">
+<script src="https://t1.kakaocdn.net/kakao_js_sdk/2.7.2/kakao.min.js" crossorigin="anonymous"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 html,body{height:100%;overflow:hidden}
@@ -24,45 +25,29 @@ html,body{height:100%;overflow:hidden}
   --safe-bottom:env(safe-area-inset-bottom,0px);
 }
 body{font-family:'Noto Sans KR',sans-serif;background:var(--bg);color:var(--text);font-size:14px;line-height:1.5}
-.app{display:flex;flex-direction:column;height:100dvh;max-width:480px;margin:0 auto;position:relative;background:var(--bg);box-shadow:0 0 40px rgba(0,0,0,0.15)}
-
+.app{display:flex;flex-direction:column;height:100dvh;max-width:480px;margin:0 auto;background:var(--bg);box-shadow:0 0 40px rgba(0,0,0,0.15)}
 /* Topbar */
 .topbar{background:var(--ocean);color:#fff;height:var(--topbar-h);padding:0 16px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;z-index:50}
-.topbar-logo{font-size:17px;font-weight:800;display:flex;align-items:center;gap:7px;letter-spacing:-.3px}
-.topbar-icon-btn{width:36px;height:36px;border-radius:10px;border:none;background:rgba(255,255,255,.12);color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:20px;transition:background .15s}
-.topbar-icon-btn:active{background:rgba(255,255,255,.25)}
-
+.topbar-logo{font-size:17px;font-weight:800;display:flex;align-items:center;gap:7px}
+.topbar-icon-btn{width:36px;height:36px;border-radius:10px;border:none;background:rgba(255,255,255,.12);color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:20px}
 /* Scroll */
 .scroll-area{flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;padding-bottom:calc(var(--bottomnav-h) + var(--safe-bottom) + 8px)}
 .scroll-area::-webkit-scrollbar{display:none}
-.page{display:none;padding:16px}
-.page.active{display:block}
-
-/* Bottom nav */
+.page{display:none;padding:16px}.page.active{display:block}
+/* Bottomnav */
 .bottomnav{height:calc(var(--bottomnav-h) + var(--safe-bottom));padding-bottom:var(--safe-bottom);background:var(--card);border-top:.5px solid var(--border);display:flex;flex-shrink:0;z-index:50}
 .nav-btn{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;border:none;background:none;cursor:pointer;color:var(--text-hint);font-size:10px;font-family:inherit;font-weight:600;padding:8px 4px;transition:color .15s}
 .nav-btn i{font-size:22px;transition:transform .15s}
-.nav-btn.active{color:var(--ocean)}
-.nav-btn.active i{transform:translateY(-1px)}
-
-/* Loading overlay */
+.nav-btn.active{color:var(--ocean)}.nav-btn.active i{transform:translateY(-1px)}
+/* Loading */
 .loading-overlay{position:fixed;inset:0;background:var(--ocean);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:999;transition:opacity .4s}
 .loading-overlay.hide{opacity:0;pointer-events:none}
-.loading-logo{font-size:56px;margin-bottom:12px;animation:bob .8s ease-in-out infinite alternate}
-.loading-title{color:#fff;font-size:22px;font-weight:800;margin-bottom:6px}
-.loading-sub{color:rgba(255,255,255,.6);font-size:13px}
 @keyframes bob{from{transform:translateY(0)}to{transform:translateY(-8px)}}
-
+.loading-logo{font-size:56px;margin-bottom:12px;animation:bob .8s ease-in-out infinite alternate}
 /* Login */
 .login-wrap{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:70dvh;padding:20px}
 .login-card{background:var(--card);border-radius:var(--radius);border:.5px solid var(--border);padding:22px;width:100%;margin-top:20px}
-.login-title{font-size:20px;font-weight:800;color:var(--ocean);text-align:center;margin-bottom:4px}
-.login-sub{font-size:13px;color:var(--text-sub);text-align:center;margin-bottom:24px}
-
-/* Sec title */
-.sec-title{font-size:11px;font-weight:700;color:var(--text-hint);text-transform:uppercase;letter-spacing:.6px;margin-bottom:10px;padding:0 2px}
-
-/* Trip card */
+/* Trip cards */
 .trip-card{background:var(--card);border-radius:var(--radius);margin-bottom:10px;overflow:hidden;cursor:pointer;transition:transform .15s;border:.5px solid var(--border)}
 .trip-card:active{transform:scale(.98)}
 .trip-card-top{background:var(--ocean);padding:13px 14px 11px;display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
@@ -71,10 +56,8 @@ body{font-family:'Noto Sans KR',sans-serif;background:var(--bg);color:var(--text
 .badges{display:flex;flex-direction:column;align-items:flex-end;gap:5px;flex-shrink:0}
 .dday{background:var(--sand);color:#6B3D00;font-size:11px;font-weight:800;padding:3px 8px;border-radius:20px;white-space:nowrap}
 .status-badge{font-size:10px;font-weight:700;padding:3px 8px;border-radius:20px;white-space:nowrap}
-.b-open{background:rgba(255,255,255,.2);color:#fff}
-.b-warn{background:rgba(245,166,35,.3);color:#FFD87A}
-.b-closed{background:rgba(201,53,53,.3);color:#FF9E9E}
-.b-mine{background:rgba(30,138,82,.3);color:#7DFFBB}
+.b-open{background:rgba(255,255,255,.2);color:#fff}.b-warn{background:rgba(245,166,35,.3);color:#FFD87A}
+.b-closed{background:rgba(201,53,53,.3);color:#FF9E9E}.b-mine{background:rgba(30,138,82,.3);color:#7DFFBB}
 .trip-card-body{padding:11px 14px 10px}
 .trip-meta{display:flex;flex-wrap:wrap;gap:10px}
 .meta-item{display:flex;align-items:center;gap:4px;font-size:12px;color:var(--text-sub)}
@@ -82,49 +65,62 @@ body{font-family:'Noto Sans KR',sans-serif;background:var(--bg);color:var(--text
 .trip-card-foot{padding:9px 14px;background:var(--bg);border-top:.5px solid var(--border);display:flex;align-items:center;gap:10px}
 .slot-bar{flex:1;height:5px;background:rgba(0,0,0,.08);border-radius:3px;overflow:hidden}
 .slot-fill{height:100%;border-radius:3px;transition:width .4s}
-
+/* My-trip 한줄 카드 */
+.my-row{background:var(--card);border-radius:var(--radius-sm);border:.5px solid var(--border);display:flex;align-items:center;gap:12px;padding:12px 14px;margin-bottom:8px;cursor:pointer;transition:transform .15s}
+.my-row:active{transform:scale(.98)}
+.my-row-date{background:var(--ocean);border-radius:8px;padding:6px 10px;text-align:center;flex-shrink:0;min-width:46px}
+.my-row-date .mon{color:rgba(255,255,255,.7);font-size:10px;font-weight:600}
+.my-row-date .day{color:#fff;font-size:18px;font-weight:800;line-height:1}
+.my-row-info{flex:1;min-width:0}
+.my-row-title{font-size:13px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.my-row-sub{font-size:11px;color:var(--text-hint);margin-top:2px}
+.my-row-right{flex-shrink:0;text-align:right}
+/* Calendar */
+.cal-wrap{background:var(--card);border-radius:var(--radius);border:.5px solid var(--border);overflow:hidden;margin-bottom:14px}
+.cal-header{background:var(--ocean);padding:12px 16px;display:flex;align-items:center;justify-content:space-between}
+.cal-title{color:#fff;font-size:15px;font-weight:700}
+.cal-nav{background:rgba(255,255,255,.15);border:none;border-radius:8px;color:#fff;width:30px;height:30px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:16px}
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:0}
+.cal-dow{text-align:center;padding:8px 0;font-size:10px;font-weight:700;color:var(--text-hint)}
+.cal-dow:first-child{color:var(--danger)}.cal-dow:last-child{color:var(--ocean-mid)}
+.cal-day{text-align:center;padding:7px 4px;font-size:13px;cursor:pointer;position:relative;border-radius:8px;margin:2px}
+.cal-day.empty{cursor:default}
+.cal-day.today{background:var(--bg);font-weight:800}
+.cal-day.has-trip{font-weight:800;color:var(--ocean)}
+.cal-day.has-trip::after{content:'';width:5px;height:5px;background:var(--sand);border-radius:50%;position:absolute;bottom:2px;left:50%;transform:translateX(-50%)}
+.cal-day.selected{background:var(--ocean);color:#fff;border-radius:8px}
+.cal-day.selected::after{background:#fff}
 /* Detail */
 .detail-hero{background:var(--ocean);margin:-16px -16px 16px;padding:14px 16px 18px}
 .back-row{display:flex;align-items:center;gap:6px;margin-bottom:10px}
 .back-btn{background:rgba(255,255,255,.15);border:none;border-radius:8px;color:#fff;width:32px;height:32px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:18px}
-.detail-title{color:#fff;font-size:19px;font-weight:800;line-height:1.3;margin-bottom:5px}
-.detail-sub{color:rgba(255,255,255,.75);font-size:12px;display:flex;align-items:center;gap:5px;flex-wrap:wrap}
 .info-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px}
 .info-box{background:var(--card);border-radius:var(--radius-sm);border:.5px solid var(--border);padding:12px}
 .info-label{font-size:10px;font-weight:700;color:var(--text-hint);text-transform:uppercase;letter-spacing:.4px;margin-bottom:4px}
 .info-val{font-size:16px;font-weight:800;color:var(--text)}
-.info-val.accent{color:var(--ocean)}
 .prog-box{background:var(--card);border-radius:var(--radius-sm);border:.5px solid var(--border);padding:13px;margin-bottom:14px}
-.prog-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:9px}
 .prog-bar{height:7px;background:rgba(0,0,0,.07);border-radius:4px;overflow:hidden}
-.prog-fill{height:100%;border-radius:4px;transition:width .5s cubic-bezier(.4,0,.2,1)}
-
-/* Buttons */
-.btn{display:flex;align-items:center;justify-content:center;gap:7px;width:100%;padding:14px;border-radius:var(--radius-sm);border:none;cursor:pointer;font-size:15px;font-weight:700;font-family:inherit;transition:all .15s}
-.btn:active{transform:scale(.97)}
-.btn-primary{background:var(--ocean);color:#fff}
-.btn-danger{background:var(--danger);color:#fff}
-.btn-kakao{background:#FEE500;color:#3A1D1D}
-.btn-kakao:active{background:#EDD400}
-.btn-success{background:var(--fish);color:#fff;opacity:.85;cursor:default}
-.btn-success:active{transform:none}
-.btn-disabled{background:rgba(0,0,0,.07);color:var(--text-hint);cursor:not-allowed}
-.btn-disabled:active{transform:none}
-.btn-outline{background:var(--card);color:var(--text);border:.5px solid var(--border)}
-.btn-sm{padding:9px 14px;font-size:13px;border-radius:var(--radius-xs);width:auto}
-
-/* Chat reveal */
-.chat-reveal{background:var(--fish-light);border:1.5px dashed var(--fish);border-radius:var(--radius-sm);padding:16px;margin-bottom:14px;text-align:center}
-.chat-reveal-title{font-size:13px;font-weight:800;color:var(--fish);margin-bottom:10px;display:flex;align-items:center;justify-content:center;gap:5px}
-
-/* Applicants */
+.prog-fill{height:100%;border-radius:4px;transition:width .5s}
 .applicants-section{background:var(--card);border-radius:var(--radius-sm);border:.5px solid var(--border);overflow:hidden;margin-bottom:14px}
 .applicants-header{padding:12px 14px;border-bottom:.5px solid var(--border);font-size:13px;font-weight:700;display:flex;align-items:center;justify-content:space-between}
 .applicant-row{display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:.5px solid var(--border)}
 .applicant-row:last-child{border-bottom:none}
 .avatar{width:34px;height:34px;border-radius:50%;background:var(--ocean-light);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:var(--ocean);flex-shrink:0}
 .avatar.mine{background:var(--fish-light);color:var(--fish)}
-
+/* Chat reveal */
+.chat-reveal{background:var(--fish-light);border:1.5px dashed var(--fish);border-radius:var(--radius-sm);padding:16px;margin-bottom:14px;text-align:center}
+/* Buttons */
+.btn{display:flex;align-items:center;justify-content:center;gap:7px;width:100%;padding:14px;border-radius:var(--radius-sm);border:none;cursor:pointer;font-size:15px;font-weight:700;font-family:inherit;transition:all .15s}
+.btn:active{transform:scale(.97)}
+.btn-primary{background:var(--ocean);color:#fff}.btn-danger{background:var(--danger);color:#fff}
+.btn-kakao{background:#FEE500;color:#3A1D1D}.btn-success{background:var(--fish);color:#fff;opacity:.85;cursor:default}
+.btn-kakao-login{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;padding:14px;border-radius:var(--radius-sm);border:none;cursor:pointer;font-size:15px;font-weight:700;font-family:inherit;background:#FEE500;color:#3A1D1D;transition:all .15s}
+.btn-kakao-login:active{transform:scale(.97);background:#EDD400}
+.login-divider{display:flex;align-items:center;gap:10px;margin:16px 0;color:var(--text-hint);font-size:12px}
+.login-divider::before,.login-divider::after{content:'';flex:1;height:1px;background:var(--border)}
+.btn-success:active{transform:none}.btn-disabled{background:rgba(0,0,0,.07);color:var(--text-hint);cursor:not-allowed}
+.btn-disabled:active{transform:none}.btn-outline{background:var(--card);color:var(--text);border:.5px solid var(--border)}
+.btn-sm{padding:8px 12px;font-size:12px;border-radius:var(--radius-xs);width:auto}
 /* Admin */
 .admin-card{background:var(--card);border-radius:var(--radius);border:.5px solid var(--border);overflow:hidden;margin-bottom:12px}
 .admin-card-head{padding:13px 14px;border-bottom:.5px solid var(--border);display:flex;align-items:flex-start;justify-content:space-between;gap:8px}
@@ -134,10 +130,8 @@ body{font-family:'Noto Sans KR',sans-serif;background:var(--bg);color:var(--text
 .stat-num{font-size:18px;font-weight:800;color:var(--ocean)}
 .stat-lab{font-size:10px;color:var(--text-hint);margin-top:1px;font-weight:500}
 .kakao-link-block{background:var(--sand-light);border:.5px solid rgba(245,166,35,.35);border-radius:var(--radius-xs);padding:11px;margin-bottom:10px}
-.kakao-link-label{font-size:11px;font-weight:700;color:#7A4F00;margin-bottom:6px;display:flex;align-items:center;gap:4px}
 .kakao-link-input{width:100%;background:var(--card);border:.5px solid rgba(245,166,35,.5);border-radius:6px;padding:8px 10px;font-size:12px;color:var(--text);outline:none;font-family:inherit}
 .chip{background:var(--ocean-light);color:var(--ocean);font-size:11px;font-weight:600;padding:4px 9px;border-radius:20px;display:inline-block;margin:2px}
-
 /* Form / Modal */
 .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:200;display:none;align-items:flex-end;justify-content:center}
 .modal-overlay.open{display:flex}
@@ -152,152 +146,171 @@ body{font-family:'Noto Sans KR',sans-serif;background:var(--bg);color:var(--text
 .form-input:focus{border-color:var(--ocean-mid);background:#fff}
 .form-row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .form-hint{font-size:11px;color:var(--text-hint);margin-top:4px}
-
-/* My trips */
-.my-trip-card{background:var(--card);border-radius:var(--radius);border:.5px solid var(--border);overflow:hidden;margin-bottom:10px;cursor:pointer}
-.my-trip-card:active{opacity:.85}
-.my-trip-head{padding:12px 14px;background:var(--ocean);display:flex;justify-content:space-between;align-items:center}
-.my-trip-title{color:#fff;font-size:14px;font-weight:700}
-.my-trip-body{padding:11px 14px;display:flex;justify-content:space-between;align-items:center}
-
+/* Member list in modal */
+.member-select-list{max-height:200px;overflow-y:auto;border:1px solid var(--border);border-radius:var(--radius-xs);margin-top:8px}
+.member-select-row{display:flex;align-items:center;gap:10px;padding:10px 12px;border-bottom:.5px solid var(--border);cursor:pointer;transition:background .15s}
+.member-select-row:last-child{border-bottom:none}
+.member-select-row:active{background:var(--bg)}
+.member-select-row.selected{background:var(--ocean-light)}
 /* Profile */
 .profile-header{background:var(--ocean);margin:-16px -16px 16px;padding:24px 16px 20px;text-align:center}
-.profile-avatar-big{width:64px;height:64px;border-radius:50%;background:rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center;font-size:26px;font-weight:800;color:#fff;margin:0 auto 10px}
 .profile-section{background:var(--card);border-radius:var(--radius-sm);border:.5px solid var(--border);margin-bottom:12px;overflow:hidden}
 .profile-row{display:flex;align-items:center;justify-content:space-between;padding:13px 14px;border-bottom:.5px solid var(--border);font-size:14px}
 .profile-row:last-child{border-bottom:none}
 .profile-row-label{display:flex;align-items:center;gap:8px;color:var(--text-sub)}
 .profile-row-label i{font-size:18px;color:var(--ocean-mid)}
-
+.divider-label{font-size:11px;font-weight:700;color:var(--text-hint);text-transform:uppercase;letter-spacing:.5px;padding:14px 14px 6px}
 /* Toast */
 .toast{position:fixed;bottom:calc(var(--bottomnav-h) + var(--safe-bottom) + 12px);left:50%;transform:translateX(-50%) translateY(8px);background:#1A1A1A;color:#fff;padding:10px 18px;border-radius:20px;font-size:13px;font-weight:600;opacity:0;transition:all .25s;z-index:999;white-space:nowrap;pointer-events:none;max-width:90vw;text-align:center}
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
-
 /* Empty */
 .empty{text-align:center;padding:48px 20px;color:var(--text-hint)}
 .empty i{font-size:48px;margin-bottom:10px;display:block;opacity:.3}
-
-/* Sync indicator */
-.sync-dot{width:7px;height:7px;border-radius:50%;background:#4CAF50;display:inline-block;margin-left:6px;animation:pulse 2s infinite}
+/* Sync */
+.sync-dot{width:7px;height:7px;border-radius:50%;background:#4CAF50;display:inline-block;margin-left:6px}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
-.sync-dot.offline{background:#F44336;animation:none}
-
-.divider-label{font-size:11px;font-weight:700;color:var(--text-hint);text-transform:uppercase;letter-spacing:.5px;padding:14px 14px 6px}
+.sync-dot{animation:pulse 2s infinite}
+.sync-dot.off{background:#F44336;animation:none}
+/* Tab bar */
+.tab-bar{display:flex;background:var(--card);border-radius:var(--radius-sm);border:.5px solid var(--border);padding:4px;margin-bottom:14px;gap:4px}
+.tab-btn2{flex:1;padding:8px;border:none;border-radius:8px;font-size:13px;font-weight:700;font-family:inherit;cursor:pointer;transition:all .2s;background:transparent;color:var(--text-hint)}
+.tab-btn2.on{background:var(--ocean);color:#fff}
 </style>
 </head>
 <body>
 
-<!-- Loading -->
 <div class="loading-overlay" id="loading">
   <div class="loading-logo">🎣</div>
-  <div class="loading-title">출조마당</div>
-  <div class="loading-sub">데이터 불러오는 중...</div>
+  <div style="color:#fff;font-size:22px;font-weight:800;margin-bottom:6px">출조마당</div>
+  <div style="color:rgba(255,255,255,.6);font-size:13px">불러오는 중...</div>
 </div>
 
 <div class="app">
-  <!-- Topbar -->
   <div class="topbar">
-    <div class="topbar-logo">
-      <span>🎣</span> 출조마당
-      <span class="sync-dot" id="sync-dot" title="실시간 연결됨"></span>
-    </div>
-    <div style="display:flex;gap:4px">
-      <button class="topbar-icon-btn" onclick="showToast('🔔 새 알림이 없습니다')" aria-label="알림">
-        <i class="ti ti-bell"></i>
-      </button>
-    </div>
+    <div class="topbar-logo"><span>🎣</span> 출조마당<span class="sync-dot" id="sync-dot"></span></div>
+    <button class="topbar-icon-btn" onclick="showToast('🔔 새 알림이 없습니다')"><i class="ti ti-bell"></i></button>
   </div>
 
-  <!-- Pages -->
   <div class="scroll-area">
 
     <!-- 로그인 -->
     <div id="page-login" class="page active">
       <div class="login-wrap">
         <div style="font-size:52px;margin-bottom:8px">🎣</div>
-        <div class="login-title">출조마당</div>
-        <div class="login-sub">낚시 출조 모집 · 선착순 신청 · 채팅방 연결</div>
+        <div style="font-size:20px;font-weight:800;color:var(--ocean);text-align:center">출조마당</div>
+        <div style="font-size:13px;color:var(--text-sub);text-align:center;margin-bottom:24px;margin-top:4px">낚시 출조 모집 · 선착순 신청 · 채팅방 연결</div>
         <div class="login-card">
-          <div class="form-group">
-            <label class="form-label">이름</label>
-            <input class="form-input" id="login-name" placeholder="홍길동">
-          </div>
-          <div class="form-group">
-            <label class="form-label">카카오톡 아이디</label>
-            <input class="form-input" id="login-kakao" placeholder="kakao_id">
-            <div class="form-hint">* 운영자가 채팅방 초대 시 사용됩니다</div>
-          </div>
-          <div class="form-group">
-            <label class="form-label">연락처</label>
-            <input class="form-input" id="login-phone" placeholder="010-0000-0000" type="tel">
-          </div>
-          <div class="form-group" id="admin-code-group" style="display:none">
-            <label class="form-label">운영자 코드 <span style="color:var(--text-hint);font-weight:400">(운영진만)</span></label>
-            <input class="form-input" id="login-admincode" placeholder="운영자 코드 입력">
-          </div>
-          <div style="margin-bottom:13px">
-            <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;color:var(--text-sub)">
-              <input type="checkbox" id="is-admin-check" onchange="toggleAdminField()" style="width:16px;height:16px">
-              운영진으로 가입
-            </label>
-          </div>
-          <button class="btn btn-primary" onclick="doLogin()">
-            <i class="ti ti-login"></i> 시작하기
+
+          <!-- 카카오 로그인 버튼 -->
+          <button class="btn-kakao-login" onclick="kakaoLogin()">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="#3A1D1D"><path d="M12 3C6.477 3 2 6.477 2 10.8c0 2.7 1.65 5.07 4.15 6.49L5.1 21l4.7-2.56C10.25 18.6 11.12 18.7 12 18.7c5.523 0 10-3.477 10-7.8S17.523 3 12 3z"/></svg>
+            카카오로 시작하기
           </button>
+
+          <div class="login-divider">또는 아이디 직접 입력</div>
+
+          <!-- 수동 로그인 -->
+          <div id="login-section">
+            <div class="form-group">
+              <input class="form-input" id="login-kakao" placeholder="카카오톡 아이디" autocomplete="off">
+              <div class="form-hint">* 카카오 로그인이 안 될 때 사용</div>
+            </div>
+            <button class="btn btn-primary" onclick="checkKakaoId()"><i class="ti ti-search"></i> 확인</button>
+          </div>
+
+          <!-- 신규 가입 폼 -->
+          <div id="register-section" style="display:none">
+            <div style="background:var(--ocean-light);border-radius:var(--radius-xs);padding:10px 12px;margin-bottom:14px;font-size:13px;color:var(--ocean);font-weight:600">
+              <i class="ti ti-info-circle"></i> <span id="reg-guide-text">추가 정보를 입력해주세요.</span>
+            </div>
+            <div class="form-group">
+              <label class="form-label">이름 *</label>
+              <input class="form-input" id="reg-name" placeholder="홍길동">
+            </div>
+            <div class="form-group">
+              <label class="form-label">카카오톡 아이디</label>
+              <input class="form-input" id="reg-kakao" readonly style="opacity:.6">
+            </div>
+            <div class="form-group">
+              <label class="form-label">연락처</label>
+              <input class="form-input" id="reg-phone" placeholder="010-0000-0000" type="tel">
+            </div>
+            <div class="form-group" id="admin-code-group" style="display:none">
+              <label class="form-label">운영자 코드</label>
+              <input class="form-input" id="reg-admincode" placeholder="운영자 코드 입력">
+            </div>
+            <div style="margin-bottom:13px">
+              <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;color:var(--text-sub)">
+                <input type="checkbox" id="is-admin-check" onchange="toggleAdminField()" style="width:16px;height:16px">
+                운영진으로 가입
+              </label>
+            </div>
+            <div style="display:flex;gap:8px">
+              <button class="btn btn-outline" style="flex:0 0 60px" onclick="resetLogin()">뒤로</button>
+              <button class="btn btn-primary" style="flex:1" onclick="doRegister()"><i class="ti ti-user-plus"></i> 가입하기</button>
+            </div>
+          </div>
+
         </div>
       </div>
     </div>
 
     <!-- 홈 -->
     <div id="page-home" class="page">
-      <p class="sec-title">모집 중인 출조</p>
+      <p class="sec-title" style="padding-top:4px">모집 중인 출조</p>
       <div id="trip-list"></div>
     </div>
 
     <!-- 상세 -->
     <div id="page-detail" class="page">
-      <div id="detail-content"></div>
+      <div id="detail-content" data-trip-id=""></div>
     </div>
 
-    <!-- 내 신청 -->
+    <!-- 내 일정 -->
     <div id="page-mytrips" class="page">
-      <p class="sec-title">내 신청 현황</p>
+      <p class="sec-title" style="padding-top:4px">내 출조 일정</p>
+      <!-- 달력 -->
+      <div class="cal-wrap">
+        <div class="cal-header">
+          <button class="cal-nav" onclick="calMove(-1)"><i class="ti ti-chevron-left"></i></button>
+          <span class="cal-title" id="cal-title">2026년 6월</span>
+          <button class="cal-nav" onclick="calMove(1)"><i class="ti ti-chevron-right"></i></button>
+        </div>
+        <div style="padding:8px 10px">
+          <div class="cal-grid" id="cal-dow"></div>
+          <div class="cal-grid" id="cal-grid"></div>
+        </div>
+      </div>
+      <!-- 한줄 카드 -->
+      <p class="sec-title" id="my-list-label">전체 일정</p>
       <div id="mytrips-list"></div>
     </div>
 
     <!-- 운영자 -->
     <div id="page-admin" class="page">
-      <p class="sec-title">운영자 대시보드</p>
+      <p class="sec-title" style="padding-top:4px">운영자 대시보드</p>
       <button class="btn btn-primary" style="margin-bottom:14px" onclick="openNewModal()">
         <i class="ti ti-plus"></i> 새 출조 등록
       </button>
+      <div class="tab-bar">
+        <button class="tab-btn2 on" id="atab-active" onclick="switchAdminTab('active')">모집중</button>
+        <button class="tab-btn2" id="atab-past" onclick="switchAdminTab('past')">지난 출조</button>
+      </div>
       <div id="admin-list"></div>
     </div>
 
     <!-- 프로필 -->
     <div id="page-profile" class="page">
       <div class="profile-header">
-        <div class="profile-avatar-big" id="profile-avatar">?</div>
+        <div style="width:64px;height:64px;border-radius:50%;background:rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center;font-size:26px;font-weight:800;color:#fff;margin:0 auto 10px" id="profile-avatar">?</div>
         <div style="color:#fff;font-size:18px;font-weight:800" id="profile-name-disp">-</div>
         <div style="color:rgba(255,255,255,.7);font-size:13px;margin-top:3px" id="profile-kakao-disp">-</div>
       </div>
       <div class="profile-section">
-        <div class="profile-row">
-          <span class="profile-row-label"><i class="ti ti-user"></i> 이름</span>
-          <span style="font-weight:600" id="p-name">-</span>
-        </div>
-        <div class="profile-row">
-          <span class="profile-row-label"><i class="ti ti-brand-kakao"></i> 카톡 아이디</span>
-          <span style="font-weight:600" id="p-kakao">-</span>
-        </div>
-        <div class="profile-row">
-          <span class="profile-row-label"><i class="ti ti-phone"></i> 연락처</span>
-          <span style="font-weight:600" id="p-phone">-</span>
-        </div>
-        <div class="profile-row">
-          <span class="profile-row-label"><i class="ti ti-shield-check"></i> 역할</span>
-          <span style="font-weight:600" id="p-role">-</span>
-        </div>
+        <div class="profile-row"><span class="profile-row-label"><i class="ti ti-user"></i> 이름</span><span style="font-weight:600" id="p-name">-</span></div>
+        <div class="profile-row"><span class="profile-row-label"><i class="ti ti-brand-kakao"></i> 카톡 아이디</span><span style="font-weight:600" id="p-kakao">-</span></div>
+        <div class="profile-row"><span class="profile-row-label"><i class="ti ti-phone"></i> 연락처</span><span style="font-weight:600" id="p-phone">-</span></div>
+        <div class="profile-row"><span class="profile-row-label"><i class="ti ti-shield-check"></i> 역할</span><span style="font-weight:600" id="p-role">-</span></div>
       </div>
       <div class="profile-section">
         <div class="divider-label">계정</div>
@@ -308,104 +321,88 @@ body{font-family:'Noto Sans KR',sans-serif;background:var(--bg);color:var(--text
       </div>
       <div class="profile-section">
         <div class="divider-label">앱 정보</div>
-        <div class="profile-row">
-          <span class="profile-row-label"><i class="ti ti-info-circle"></i> 버전</span>
-          <span style="color:var(--text-hint)">v2.0 (Firebase)</span>
-        </div>
-        <div class="profile-row">
-          <span class="profile-row-label"><i class="ti ti-database"></i> DB 연결</span>
-          <span style="color:var(--fish);font-weight:600" id="db-status">연결중...</span>
-        </div>
+        <div class="profile-row"><span class="profile-row-label"><i class="ti ti-info-circle"></i> 버전</span><span style="color:var(--text-hint)">v3.0</span></div>
+        <div class="profile-row"><span class="profile-row-label"><i class="ti ti-database"></i> DB 연결</span><span style="color:var(--fish);font-weight:600" id="db-status">연결중...</span></div>
       </div>
     </div>
 
   </div>
 
-  <!-- Bottom Nav -->
   <div class="bottomnav" id="bottomnav" style="display:none">
-    <button class="nav-btn active" data-page="home" onclick="switchPage('home',this)">
-      <i class="ti ti-home"></i>홈
-    </button>
-    <button class="nav-btn" data-page="mytrips" onclick="switchPage('mytrips',this)">
-      <i class="ti ti-clipboard-list"></i>내 신청
-    </button>
-    <button class="nav-btn" data-page="admin" onclick="switchPage('admin',this)" id="admin-nav-btn" style="display:none">
-      <i class="ti ti-settings"></i>운영
-    </button>
-    <button class="nav-btn" data-page="profile" onclick="switchPage('profile',this)">
-      <i class="ti ti-user"></i>프로필
-    </button>
+    <button class="nav-btn active" data-page="home" onclick="switchPage('home',this)"><i class="ti ti-home"></i>홈</button>
+    <button class="nav-btn" data-page="mytrips" onclick="switchPage('mytrips',this)"><i class="ti ti-calendar"></i>내 일정</button>
+    <button class="nav-btn" data-page="admin" onclick="switchPage('admin',this)" id="admin-nav-btn" style="display:none"><i class="ti ti-settings"></i>운영</button>
+    <button class="nav-btn" data-page="profile" onclick="switchPage('profile',this)"><i class="ti ti-user"></i>프로필</button>
   </div>
 </div>
 
-<!-- 새 출조 등록 모달 -->
+<!-- 출조 등록/수정 모달 -->
 <div class="modal-overlay" id="new-modal">
   <div class="modal">
     <div class="modal-handle"></div>
     <div class="modal-title" id="trip-modal-title"><i class="ti ti-fish"></i> 새 출조 등록</div>
     <input type="hidden" id="f-editing-id" value="">
-    <div class="form-group">
-      <label class="form-label">출조명 *</label>
-      <input class="form-input" id="f-title" placeholder="예) 서해 광어 선상 출조">
-    </div>
+    <div class="form-group"><label class="form-label">출조명 *</label><input class="form-input" id="f-title" placeholder="예) 서해 광어 선상 출조"></div>
     <div class="form-row">
-      <div class="form-group">
-        <label class="form-label">출조 날짜 *</label>
-        <input class="form-input" type="date" id="f-date">
-      </div>
-      <div class="form-group">
-        <label class="form-label">출발 시간</label>
-        <input class="form-input" type="time" id="f-time" value="05:00">
-      </div>
+      <div class="form-group"><label class="form-label">출조 날짜 *</label><input class="form-input" type="date" id="f-date"></div>
+      <div class="form-group"><label class="form-label">출발 시간</label><input class="form-input" type="time" id="f-time" value="05:00"></div>
     </div>
-    <div class="form-group">
-      <label class="form-label">선착장 / 장소 *</label>
-      <input class="form-input" id="f-location" placeholder="예) 인천 연안부두 3번 선착장">
-    </div>
+    <div class="form-group"><label class="form-label">선착장 / 장소 *</label><input class="form-input" id="f-location" placeholder="예) 인천 연안부두 3번 선착장"></div>
     <div class="form-row">
-      <div class="form-group">
-        <label class="form-label">모집 정원</label>
-        <input class="form-input" type="number" id="f-capacity" value="10" min="1" max="99">
-      </div>
-      <div class="form-group">
-        <label class="form-label">1인 비용 (원)</label>
-        <input class="form-input" type="number" id="f-cost" value="80000">
-      </div>
+      <div class="form-group"><label class="form-label">모집 정원</label><input class="form-input" type="number" id="f-capacity" value="10" min="1"></div>
+      <div class="form-group"><label class="form-label">1인 비용 (원)</label><input class="form-input" type="number" id="f-cost" value="80000"></div>
     </div>
-    <div class="form-group">
-      <label class="form-label">모집 마감일</label>
-      <input class="form-input" type="date" id="f-deadline">
-    </div>
-    <div class="form-group">
-      <label class="form-label">카카오 오픈채팅 링크</label>
-      <input class="form-input" id="f-kakao" placeholder="https://open.kakao.com/o/...">
-      <div class="form-hint">* 마감 후 신청자에게만 공개됩니다</div>
-    </div>
-    <div class="form-group">
-      <label class="form-label">안내사항</label>
-      <input class="form-input" id="f-note" placeholder="예) 낚시대 개인 지참, 미끼 제공">
-    </div>
+    <div class="form-group"><label class="form-label">모집 마감일</label><input class="form-input" type="date" id="f-deadline"></div>
+    <div class="form-group"><label class="form-label">카카오 오픈채팅 링크</label><input class="form-input" id="f-kakao" placeholder="https://open.kakao.com/o/..."><div class="form-hint">* 마감 후 신청자에게만 공개됩니다</div></div>
+    <div class="form-group"><label class="form-label">안내사항</label><input class="form-input" id="f-note" placeholder="예) 낚시대 개인 지참, 미끼 제공"></div>
     <div style="display:flex;gap:10px;margin-top:4px">
-      <button class="btn btn-primary" style="flex:1" onclick="submitNewTrip()">
-        <i class="ti ti-check"></i> 등록하기
-      </button>
+      <button class="btn btn-primary" style="flex:1" onclick="submitNewTrip()"><i class="ti ti-check"></i> 저장하기</button>
       <button class="btn btn-outline" style="flex:0 0 72px;border:.5px solid var(--border)" onclick="closeModal('new-modal')">취소</button>
+    </div>
+  </div>
+</div>
+
+<!-- 회원 등록 모달 (운영자용) -->
+<div class="modal-overlay" id="add-member-modal">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title"><i class="ti ti-user-plus"></i> 출조 대상자 등록</div>
+    <input type="hidden" id="am-trip-id">
+    <!-- 검색 -->
+    <div class="form-group">
+      <label class="form-label">카톡 아이디 검색</label>
+      <div style="display:flex;gap:8px">
+        <input class="form-input" id="am-search" placeholder="카톡 아이디 입력" style="flex:1">
+        <button class="btn btn-primary btn-sm" onclick="searchMember()" style="flex-shrink:0;width:auto;padding:0 14px">검색</button>
+      </div>
+    </div>
+    <!-- 가입 회원 목록 -->
+    <div class="form-group">
+      <label class="form-label">또는 가입 회원 목록에서 선택</label>
+      <div class="member-select-list" id="member-select-list"></div>
+    </div>
+    <!-- 선택된 회원 -->
+    <div id="am-selected-wrap" style="display:none;margin-bottom:14px">
+      <div style="font-size:12px;font-weight:700;color:var(--text-sub);margin-bottom:6px">선택된 회원</div>
+      <div id="am-selected-info" style="background:var(--ocean-light);border-radius:var(--radius-xs);padding:10px 12px;font-size:13px;color:var(--ocean);font-weight:600"></div>
+    </div>
+    <div style="display:flex;gap:10px">
+      <button class="btn btn-primary" style="flex:1" onclick="confirmAddMember()"><i class="ti ti-user-check"></i> 등록하기</button>
+      <button class="btn btn-outline" style="flex:0 0 72px;border:.5px solid var(--border)" onclick="closeModal('add-member-modal')">취소</button>
     </div>
   </div>
 </div>
 
 <div class="toast" id="toast"></div>
 
-<!-- Firebase SDK -->
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import {
   getFirestore, collection, doc,
-  addDoc, updateDoc, deleteDoc,
-  onSnapshot, query, orderBy, serverTimestamp, getDoc, setDoc
+  addDoc, updateDoc, deleteDoc, getDoc, setDoc,
+  onSnapshot, query, orderBy, where, serverTimestamp, getDocs
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
-/* ── Firebase 초기화 ───────────────────────────────────── */
 const firebaseConfig = {
   apiKey: "AIzaSyAxyLn2wNlxXqJ3IzjuCR7_c54JMufjXHU",
   authDomain: "mulbit-9195c.firebaseapp.com",
@@ -415,398 +412,416 @@ const firebaseConfig = {
   appId: "1:754737585082:web:c84ce6bf7635d10ff11b83"
 };
 
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
+const fbApp = initializeApp(firebaseConfig);
+const db = getFirestore(fbApp);
 
-/* ── State ─────────────────────────────────────────────── */
+/* ── State ─────────────────────────────────── */
 let ME = null;
 let TRIPS = [];
+let MEMBERS = []; // 전체 가입 회원
+let calYear, calMonth, calSelected = null;
+let adminTab = 'active';
 let currentPage = 'login';
 let prevPage = 'home';
-let unsubscribe = null;
-const ADMIN_CODE = 'fish2024'; // 운영자 코드 (나중에 변경 가능)
+let unsubTrips = null, unsubMembers = null;
+let amSelectedMember = null;
+const ADMIN_CODE = 'fish2024';
 
-/* ── 로딩 숨기기 ───────────────────────────────────────── */
+/* ── 초기화 ──────────────────────────────────── */
+const now = new Date();
+calYear = now.getFullYear(); calMonth = now.getMonth();
+
+// 카카오 SDK 초기화
+Kakao.init('d071eec6491ca0fa33e56531f7dd0861');
+
 setTimeout(() => {
   document.getElementById('loading').classList.add('hide');
-  // 로컬스토리지에 저장된 사용자 있으면 자동 로그인
-  const saved = localStorage.getItem('chuljo_user');
-  if (saved) {
-    ME = JSON.parse(saved);
-    afterLogin();
-  }
+  const saved = localStorage.getItem('chuljo_me');
+  if (saved) { ME = JSON.parse(saved); afterLogin(); }
 }, 800);
 
-/* ── 로그인 ────────────────────────────────────────────── */
-window.toggleAdminField = function() {
-  const checked = document.getElementById('is-admin-check').checked;
-  document.getElementById('admin-code-group').style.display = checked ? 'block' : 'none';
+/* ── 카카오 로그인 ────────────────────────────── */
+window.kakaoLogin = function() {
+  if (!Kakao.isInitialized()) { showToast('⚠️ 카카오 SDK 초기화 오류'); return; }
+  Kakao.Auth.login({
+    success: function(authObj) {
+      Kakao.API.request({
+        url: '/v2/user/me',
+        success: async function(res) {
+          const kakaoId = 'kakao_' + res.id;
+          const kakaoNick = res.kakao_account?.profile?.nickname || res.properties?.nickname || '';
+          const kakaoImg  = res.kakao_account?.profile?.profile_image_url || '';
+          // Firebase에서 기존 회원 확인
+          try {
+            const snap = await getDoc(doc(db, 'users', kakaoId));
+            if (snap.exists()) {
+              ME = { kakao: kakaoId, ...snap.data() };
+              localStorage.setItem('chuljo_me', JSON.stringify(ME));
+              afterLogin();
+              showToast('✅ 환영합니다, ' + ME.name + '님!');
+            } else {
+              // 신규 → 이름 확인 폼
+              document.getElementById('login-section').style.display = 'none';
+              document.getElementById('register-section').style.display = 'block';
+              document.getElementById('reg-kakao').value = kakaoId;
+              document.getElementById('reg-name').value = kakaoNick;
+              document.getElementById('reg-guide-text').textContent = '카카오 계정으로 신규 가입합니다. 정보를 확인해주세요.';
+            }
+          } catch(e) { showToast('⚠️ DB 오류. 잠시 후 다시 시도해주세요'); console.error(e); }
+        },
+        fail: function(err) { showToast('⚠️ 카카오 정보 조회 실패'); console.error(err); }
+      });
+    },
+    fail: function(err) {
+      showToast('⚠️ 카카오 로그인 실패. 아이디 직접 입력을 이용해주세요');
+      console.error(err);
+    }
+  });
 };
 
-window.doLogin = function() {
-  const name = document.getElementById('login-name').value.trim();
+/* ── 수동 로그인 (아이디 입력) ────────────────── */
+window.checkKakaoId = async function() {
   const kakao = document.getElementById('login-kakao').value.trim();
-  const phone = document.getElementById('login-phone').value.trim();
+  if (!kakao) { showToast('⚠️ 카톡 아이디를 입력해주세요'); return; }
+  try {
+    const snap = await getDoc(doc(db, 'users', kakao));
+    if (snap.exists()) {
+      ME = { kakao, ...snap.data() };
+      localStorage.setItem('chuljo_me', JSON.stringify(ME));
+      afterLogin();
+      showToast('✅ 환영합니다, ' + ME.name + '님!');
+    } else {
+      document.getElementById('login-section').style.display = 'none';
+      document.getElementById('register-section').style.display = 'block';
+      document.getElementById('reg-kakao').value = kakao;
+      document.getElementById('reg-guide-text').textContent = '신규 회원입니다. 정보를 입력해주세요.';
+    }
+  } catch(e) { showToast('⚠️ 연결 오류. 잠시 후 다시 시도해주세요'); console.error(e); }
+};
+
+window.resetLogin = function() {
+  document.getElementById('login-section').style.display = 'block';
+  document.getElementById('register-section').style.display = 'none';
+  document.getElementById('login-kakao').value = '';
+};
+
+window.toggleAdminField = function() {
+  document.getElementById('admin-code-group').style.display =
+    document.getElementById('is-admin-check').checked ? 'block' : 'none';
+};
+
+window.doRegister = async function() {
+  const name = document.getElementById('reg-name').value.trim();
+  const kakao = document.getElementById('reg-kakao').value.trim();
+  const phone = document.getElementById('reg-phone').value.trim();
   const isAdminChecked = document.getElementById('is-admin-check').checked;
-  const adminCode = document.getElementById('login-admincode').value.trim();
-
-  if (!name || !kakao) { showToast('⚠️ 이름과 카톡 아이디를 입력해주세요'); return; }
-
-  let isAdmin = false;
-  if (isAdminChecked) {
-    if (adminCode !== ADMIN_CODE) { showToast('⚠️ 운영자 코드가 올바르지 않습니다'); return; }
-    isAdmin = true;
-  }
-
-  ME = { name, kakao, phone, isAdmin };
-  localStorage.setItem('chuljo_user', JSON.stringify(ME));
-  afterLogin();
+  const adminCode = document.getElementById('reg-admincode').value.trim();
+  if (!name) { showToast('⚠️ 이름을 입력해주세요'); return; }
+  if (isAdminChecked && adminCode !== ADMIN_CODE) { showToast('⚠️ 운영자 코드가 올바르지 않습니다'); return; }
+  const userData = { name, kakao, phone, isAdmin: isAdminChecked && adminCode === ADMIN_CODE, createdAt: serverTimestamp() };
+  try {
+    await setDoc(doc(db, 'users', kakao), userData);
+    ME = { kakao, ...userData };
+    localStorage.setItem('chuljo_me', JSON.stringify(ME));
+    afterLogin();
+    showToast('✅ 가입 완료! 환영합니다, ' + name + '님!');
+  } catch(e) { showToast('⚠️ 가입 중 오류 발생'); console.error(e); }
 };
 
 function afterLogin() {
-  // UI 업데이트
-  document.getElementById('profile-avatar').textContent = ME.name[0];
+  document.getElementById('profile-avatar').textContent = ME.name?.[0] || '?';
   document.getElementById('profile-name-disp').textContent = ME.name;
   document.getElementById('profile-kakao-disp').textContent = '@' + ME.kakao;
   document.getElementById('p-name').textContent = ME.name;
   document.getElementById('p-kakao').textContent = ME.kakao;
   document.getElementById('p-phone').textContent = ME.phone || '-';
   document.getElementById('p-role').textContent = ME.isAdmin ? '운영자' : '일반 회원';
-
-  // 운영자 탭 표시
   if (ME.isAdmin) document.getElementById('admin-nav-btn').style.display = 'flex';
-
-  // 바텀 네비 표시
   document.getElementById('bottomnav').style.display = 'flex';
-
-  // Firestore 실시간 구독 시작
-  startRealtimeSync();
-
-  // 홈으로 이동
+  startSync();
   switchPage('home', document.querySelector('.nav-btn[data-page="home"]'));
 }
 
 window.doLogout = function() {
-  if (unsubscribe) unsubscribe();
-  localStorage.removeItem('chuljo_user');
-  ME = null; TRIPS = [];
+  if (unsubTrips) unsubTrips();
+  if (unsubMembers) unsubMembers();
+  // 카카오 로그아웃
+  if (Kakao.isInitialized() && Kakao.Auth.getAccessToken()) {
+    Kakao.Auth.logout(() => { console.log('카카오 로그아웃 완료'); });
+  }
+  localStorage.removeItem('chuljo_me');
+  ME = null; TRIPS = []; MEMBERS = [];
   document.getElementById('bottomnav').style.display = 'none';
   document.getElementById('admin-nav-btn').style.display = 'none';
+  document.getElementById('login-section').style.display = 'block';
+  document.getElementById('register-section').style.display = 'none';
+  document.getElementById('login-kakao').value = '';
   switchPageRaw('login');
   showToast('로그아웃 되었습니다');
 };
 
-/* ── Firestore 실시간 동기화 ────────────────────────────── */
-function startRealtimeSync() {
-  const q = query(collection(db, 'trips'), orderBy('createdAt', 'desc'));
+/* ── 실시간 동기화 ────────────────────────────── */
+function startSync() {
+  const dot = document.getElementById('sync-dot');
   document.getElementById('db-status').textContent = '연결중...';
-  document.getElementById('sync-dot').className = 'sync-dot offline';
 
-  unsubscribe = onSnapshot(q,
-    (snapshot) => {
-      TRIPS = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+  // 출조 구독
+  unsubTrips = onSnapshot(
+    query(collection(db, 'trips'), orderBy('createdAt', 'desc')),
+    snap => {
+      TRIPS = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      dot.className = 'sync-dot';
       document.getElementById('db-status').textContent = '실시간 연결됨';
-      document.getElementById('sync-dot').className = 'sync-dot';
-      // 현재 페이지 리렌더
-      if (currentPage === 'home') renderHome();
-      else if (currentPage === 'mytrips') renderMyTrips();
-      else if (currentPage === 'admin') renderAdmin();
-      else if (currentPage === 'detail') {
-        const id = document.getElementById('detail-content').dataset.tripId;
-        if (id) renderDetail(id);
-      }
+      rerender();
     },
-    (err) => {
-      console.error(err);
-      document.getElementById('db-status').textContent = '연결 오류';
-      document.getElementById('sync-dot').className = 'sync-dot offline';
-      showToast('⚠️ DB 연결 오류가 발생했습니다');
-    }
+    err => { dot.className = 'sync-dot off'; document.getElementById('db-status').textContent = '연결 오류'; console.error(err); }
   );
+
+  // 회원 목록 구독 (운영자만)
+  if (ME?.isAdmin) {
+    unsubMembers = onSnapshot(collection(db, 'users'), snap => {
+      MEMBERS = snap.docs.map(d => ({ kakao: d.id, ...d.data() }));
+    });
+  }
 }
 
-/* ── Helpers ───────────────────────────────────────────── */
+function rerender() {
+  if (currentPage === 'home') renderHome();
+  else if (currentPage === 'mytrips') renderMyTrips();
+  else if (currentPage === 'admin') renderAdmin();
+  else if (currentPage === 'detail') {
+    const id = document.getElementById('detail-content').dataset.tripId;
+    if (id) renderDetail(id);
+  }
+}
+
+/* ── Helpers ─────────────────────────────────── */
 function dday(ds) {
   if (!ds) return '-';
-  const today = new Date(); today.setHours(0,0,0,0);
+  const t = new Date(); t.setHours(0,0,0,0);
   const d = new Date(ds); d.setHours(0,0,0,0);
-  const diff = Math.round((d - today) / 86400000);
-  if (diff === 0) return 'D-day';
-  if (diff > 0) return 'D-' + diff;
-  return 'D+' + Math.abs(diff);
+  const diff = Math.round((d-t)/86400000);
+  if (diff===0) return 'D-day'; if (diff>0) return 'D-'+diff; return 'D+'+Math.abs(diff);
 }
-function fmtDate(ds) {
-  if (!ds) return '-';
-  const p = ds.split('-'); return p[1] + '월 ' + p[2] + '일';
-}
-function fmtCost(n) { return Number(n).toLocaleString() + '원'; }
-function isMine(t) { return (t.applicants || []).some(a => a.kakao === ME?.kakao); }
-function isFull(t) { return (t.applicants || []).length >= (t.capacity || 0); }
-function isPastDeadline(t) { return t.deadline && new Date(t.deadline) < new Date(); }
-function canApply(t) { return !t.closed && !isFull(t) && !isPastDeadline(t) && !isMine(t); }
-function slotColor(pct) { if (pct >= 1) return 'var(--danger)'; if (pct >= 0.7) return 'var(--sand)'; return 'var(--fish)'; }
+function fmtDate(ds) { if (!ds) return '-'; const p=ds.split('-'); return p[1]+'월 '+p[2]+'일'; }
+function fmtCost(n) { return Number(n).toLocaleString()+'원'; }
+function isMine(t) { return (t.applicants||[]).some(a=>a.kakao===ME?.kakao); }
+function isFull(t) { return (t.applicants||[]).length>=(t.capacity||0); }
+function isPast(t) { const today=new Date();today.setHours(0,0,0,0); return new Date(t.date)<today; }
+function isPastDeadline(t) { return t.deadline && new Date(t.deadline)<new Date(); }
+function canApply(t) { return !t.closed&&!isFull(t)&&!isPastDeadline(t)&&!isMine(t); }
+function slotColor(pct) { if(pct>=1)return'var(--danger)';if(pct>=0.7)return'var(--sand)';return'var(--fish)'; }
 
-/* ── Navigation ────────────────────────────────────────── */
+/* ── Navigation ──────────────────────────────── */
 function switchPageRaw(name) {
-  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-  document.getElementById('page-' + name).classList.add('active');
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.getElementById('page-'+name).classList.add('active');
   currentPage = name;
 }
-
 window.switchPage = function(name, btn) {
-  prevPage = currentPage === 'detail' ? 'home' : currentPage;
+  prevPage = currentPage==='detail'?'home':currentPage;
   switchPageRaw(name);
-  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
-  if (btn) btn.classList.add('active');
-  if (name === 'home') renderHome();
-  if (name === 'mytrips') renderMyTrips();
-  if (name === 'admin') renderAdmin();
-  document.querySelector('.scroll-area').scrollTop = 0;
+  document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
+  if(btn) btn.classList.add('active');
+  if(name==='home') renderHome();
+  if(name==='mytrips') renderMyTrips();
+  if(name==='admin') renderAdmin();
+  document.querySelector('.scroll-area').scrollTop=0;
 };
-
 window.goDetail = function(id) {
   prevPage = currentPage;
   switchPageRaw('detail');
-  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
   renderDetail(id);
-  document.querySelector('.scroll-area').scrollTop = 0;
+  document.querySelector('.scroll-area').scrollTop=0;
 };
-
 window.goBack = function() {
-  const target = prevPage === 'detail' ? 'home' : prevPage;
-  const btn = document.querySelector('.nav-btn[data-page="' + target + '"]');
-  switchPage(target, btn);
+  const t = prevPage==='detail'?'home':prevPage;
+  switchPage(t, document.querySelector('.nav-btn[data-page="'+t+'"]'));
 };
 
-/* ── Home ──────────────────────────────────────────────── */
+/* ── Home ────────────────────────────────────── */
 function renderHome() {
   const el = document.getElementById('trip-list');
-  if (!TRIPS.length) {
-    el.innerHTML = '<div class="empty"><i class="ti ti-fish-off"></i><p>등록된 출조가 없습니다</p></div>';
-    return;
-  }
+  if (!TRIPS.length) { el.innerHTML='<div class="empty"><i class="ti ti-fish-off"></i><p>등록된 출조가 없습니다</p></div>'; return; }
   el.innerHTML = TRIPS.map(t => {
-    const pct = (t.applicants || []).length / (t.capacity || 1);
-    const full = t.closed || isFull(t) || isPastDeadline(t);
-    const mine = isMine(t);
-    const bc = t.closed || isFull(t) ? 'b-closed' : mine ? 'b-mine' : pct >= 0.7 ? 'b-warn' : 'b-open';
-    const bt = t.closed ? '마감됨' : isFull(t) ? '정원마감' : mine ? '신청완료' : pct >= 0.7 ? '마감임박' : '모집중';
+    const pct=(t.applicants||[]).length/(t.capacity||1);
+    const mine=isMine(t);
+    const bc=t.closed||isFull(t)?'b-closed':mine?'b-mine':pct>=0.7?'b-warn':'b-open';
+    const bt=t.closed?'마감됨':isFull(t)?'정원마감':mine?'신청완료':pct>=0.7?'마감임박':'모집중';
     return `<div class="trip-card" onclick="goDetail('${t.id}')">
       <div class="trip-card-top">
-        <div style="flex:1;min-width:0">
-          <div class="trip-title">${t.title}</div>
-          <div class="trip-date-row"><i class="ti ti-calendar" style="font-size:12px"></i>${fmtDate(t.date)} ${t.time||''} 출발</div>
-        </div>
-        <div class="badges">
-          <span class="dday">${dday(t.date)}</span>
-          <span class="status-badge ${bc}">${bt}</span>
-        </div>
+        <div style="flex:1;min-width:0"><div class="trip-title">${t.title}</div>
+        <div class="trip-date-row"><i class="ti ti-calendar" style="font-size:12px"></i>${fmtDate(t.date)} ${t.time||''} 출발</div></div>
+        <div class="badges"><span class="dday">${dday(t.date)}</span><span class="status-badge ${bc}">${bt}</span></div>
       </div>
-      <div class="trip-card-body">
-        <div class="trip-meta">
-          <div class="meta-item"><i class="ti ti-map-pin"></i>${t.location}</div>
-          <div class="meta-item"><i class="ti ti-wallet"></i>${fmtCost(t.cost)}</div>
-        </div>
-      </div>
+      <div class="trip-card-body"><div class="trip-meta">
+        <div class="meta-item"><i class="ti ti-map-pin"></i>${t.location}</div>
+        <div class="meta-item"><i class="ti ti-wallet"></i>${fmtCost(t.cost)}</div>
+      </div></div>
       <div class="trip-card-foot">
         <span style="font-size:12px;font-weight:700;flex-shrink:0;color:${slotColor(pct)}">${(t.applicants||[]).length}/${t.capacity}명</span>
         <div class="slot-bar"><div class="slot-fill" style="width:${Math.min(pct*100,100)}%;background:${slotColor(pct)}"></div></div>
         <span style="font-size:11px;color:var(--text-hint);flex-shrink:0">마감 ${fmtDate(t.deadline)}</span>
-      </div>
-    </div>`;
+      </div></div>`;
   }).join('');
 }
 
-/* ── Detail ────────────────────────────────────────────── */
+/* ── Detail ──────────────────────────────────── */
 function renderDetail(id) {
-  const t = TRIPS.find(x => x.id === id);
+  const t = TRIPS.find(x=>x.id===id);
   if (!t) return;
   document.getElementById('detail-content').dataset.tripId = id;
-  const pct = (t.applicants||[]).length / (t.capacity||1);
-  const full = t.closed || isFull(t) || isPastDeadline(t);
-  const mine = isMine(t);
-  const showLink = full && mine;
+  const pct=(t.applicants||[]).length/(t.capacity||1);
+  const full=t.closed||isFull(t)||isPastDeadline(t);
+  const mine=isMine(t), showLink=full&&mine;
+  let btnHtml='';
+  if(showLink) btnHtml=`<div class="chat-reveal">
+    <div style="font-size:13px;font-weight:800;color:var(--fish);margin-bottom:10px;display:flex;align-items:center;justify-content:center;gap:5px"><i class="ti ti-brand-hipchat"></i> 오픈채팅방이 열렸습니다!</div>
+    <button class="btn btn-kakao" onclick="openKakao('${t.kakaoLink||''}')"><i class="ti ti-brand-kakao" style="font-size:20px"></i> 카카오 오픈채팅 입장하기</button>
+    <p style="font-size:11px;color:var(--fish);opacity:.75;margin-top:8px">버튼을 눌러 출조 채팅방에 바로 입장하세요</p></div>`;
+  else if(mine) btnHtml=`<button class="btn btn-success" style="margin-bottom:14px"><i class="ti ti-check"></i> 신청 완료 — 마감 후 채팅링크 공개</button>`;
+  else if(full) btnHtml=`<button class="btn btn-disabled" disabled style="margin-bottom:14px">${t.closed||isFull(t)?'정원이 마감되었습니다':'모집 기간이 종료되었습니다'}</button>`;
+  else btnHtml=`<button class="btn btn-primary" style="margin-bottom:14px" onclick="applyTrip('${id}')"><i class="ti ti-fish"></i> 출조 신청하기</button>`;
 
-  let btnHtml = '';
-  if (showLink) {
-    btnHtml = `<div class="chat-reveal">
-      <div class="chat-reveal-title"><i class="ti ti-brand-hipchat"></i> 오픈채팅방이 열렸습니다!</div>
-      <button class="btn btn-kakao" onclick="openKakao('${t.kakaoLink||''}')">
-        <i class="ti ti-brand-kakao" style="font-size:20px"></i> 카카오 오픈채팅 입장하기
-      </button>
-      <p style="font-size:11px;color:var(--fish);opacity:.75;margin-top:8px">버튼을 눌러 출조 채팅방에 바로 입장하세요</p>
-    </div>`;
-  } else if (mine) {
-    btnHtml = `<button class="btn btn-success" style="margin-bottom:14px"><i class="ti ti-check"></i> 신청 완료 — 마감 후 채팅링크 공개</button>`;
-  } else if (full) {
-    btnHtml = `<button class="btn btn-disabled" disabled style="margin-bottom:14px">${t.closed||isFull(t)?'정원이 마감되었습니다':'모집 기간이 종료되었습니다'}</button>`;
-  } else {
-    btnHtml = `<button class="btn btn-primary" style="margin-bottom:14px" onclick="applyTrip('${id}')"><i class="ti ti-fish"></i> 출조 신청하기</button>`;
-  }
-
-  const listHtml = (t.applicants||[]).map((a, i) => {
-    const isMe = a.kakao === ME?.kakao;
+  const listHtml=(t.applicants||[]).map(a=>{
+    const isMe=a.kakao===ME?.kakao;
     return `<div class="applicant-row">
       <div class="avatar${isMe?' mine':''}">${a.name[0]}</div>
-      <div style="flex:1;min-width:0">
-        <div style="font-size:13px;font-weight:700">${a.name}${isMe?' <span style="font-size:11px;color:var(--fish)">(나)</span>':''}</div>
-        <div style="font-size:11px;color:var(--text-hint)">@${a.kakao}</div>
-      </div>
-      <div style="font-size:11px;color:var(--text-hint)">${a.time||''}</div>
-    </div>`;
+      <div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:700">${a.name}${isMe?' <span style="font-size:11px;color:var(--fish)">(나)</span>':''}</div>
+      <div style="font-size:11px;color:var(--text-hint)">@${a.kakao}</div></div>
+      <div style="font-size:11px;color:var(--text-hint)">${a.time||''}</div></div>`;
   }).join('');
 
-  const noteHtml = t.note
-    ? `<div style="background:var(--bg);border-radius:var(--radius-xs);padding:11px 13px;margin-bottom:14px;font-size:13px;color:var(--text-sub);border-left:3px solid var(--ocean-mid)">${t.note}</div>`
-    : '';
-
-  document.getElementById('detail-content').innerHTML = `
+  document.getElementById('detail-content').innerHTML=`
     <div class="detail-hero">
-      <div class="back-row">
-        <button class="back-btn" onclick="goBack()"><i class="ti ti-arrow-left"></i></button>
-        <span style="color:rgba(255,255,255,.7);font-size:13px">목록으로</span>
-      </div>
-      <div class="detail-title">${t.title}</div>
-      <div class="detail-sub">
-        <i class="ti ti-calendar"></i>${fmtDate(t.date)} ${t.time||''} 출발
-        &nbsp;·&nbsp;<i class="ti ti-map-pin"></i>${t.location}
-      </div>
+      <div class="back-row"><button class="back-btn" onclick="goBack()"><i class="ti ti-arrow-left"></i></button>
+      <span style="color:rgba(255,255,255,.7);font-size:13px">목록으로</span></div>
+      <div style="color:#fff;font-size:19px;font-weight:800;line-height:1.3;margin-bottom:5px">${t.title}</div>
+      <div style="color:rgba(255,255,255,.75);font-size:12px;display:flex;align-items:center;gap:5px;flex-wrap:wrap">
+        <i class="ti ti-calendar"></i>${fmtDate(t.date)} ${t.time||''} 출발 &nbsp;·&nbsp;<i class="ti ti-map-pin"></i>${t.location}</div>
     </div>
     <div class="info-grid">
-      <div class="info-box"><div class="info-label">1인 비용</div><div class="info-val accent">${fmtCost(t.cost)}</div></div>
+      <div class="info-box"><div class="info-label">1인 비용</div><div class="info-val" style="color:var(--ocean)">${fmtCost(t.cost)}</div></div>
       <div class="info-box"><div class="info-label">모집 정원</div><div class="info-val">${t.capacity}명</div></div>
       <div class="info-box"><div class="info-label">신청 인원</div><div class="info-val" style="color:${slotColor(pct)}">${(t.applicants||[]).length}명</div></div>
       <div class="info-box"><div class="info-label">모집 마감</div><div class="info-val" style="font-size:13px">${fmtDate(t.deadline)}</div></div>
     </div>
     <div class="prog-box">
-      <div class="prog-header">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:9px">
         <span style="font-size:13px;font-weight:600;color:var(--text-sub)">신청 현황</span>
         <span style="font-size:14px;font-weight:800;color:${slotColor(pct)}">${(t.applicants||[]).length} / ${t.capacity}명</span>
       </div>
       <div class="prog-bar"><div class="prog-fill" style="width:${Math.min(pct*100,100)}%;background:${slotColor(pct)}"></div></div>
     </div>
-    ${noteHtml}
+    ${t.note?`<div style="background:var(--bg);border-radius:var(--radius-xs);padding:11px 13px;margin-bottom:14px;font-size:13px;color:var(--text-sub);border-left:3px solid var(--ocean-mid)">${t.note}</div>`:''}
     ${btnHtml}
     <div class="applicants-section">
-      <div class="applicants-header">
-        <span>신청자 명단</span>
-        <span style="font-size:13px;font-weight:800;color:var(--ocean)">${(t.applicants||[]).length}명</span>
-      </div>
-      ${listHtml || '<div style="padding:16px;text-align:center;color:var(--text-hint);font-size:13px">아직 신청자가 없습니다</div>'}
+      <div class="applicants-header"><span>신청자 명단</span><span style="font-size:13px;font-weight:800;color:var(--ocean)">${(t.applicants||[]).length}명</span></div>
+      ${listHtml||'<div style="padding:16px;text-align:center;color:var(--text-hint);font-size:13px">아직 신청자가 없습니다</div>'}
     </div>`;
 }
 
-/* ── Apply ─────────────────────────────────────────────── */
 window.applyTrip = async function(id) {
-  const t = TRIPS.find(x => x.id === id);
-  if (!t || !canApply(t)) return;
-  const now = new Date();
-  const timeStr = `${now.getMonth()+1}/${now.getDate()} ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
-  const newApplicants = [...(t.applicants||[]), { name: ME.name, kakao: ME.kakao, phone: ME.phone||'', time: timeStr }];
+  const t=TRIPS.find(x=>x.id===id);
+  if(!t||!canApply(t)) return;
+  const n=new Date();
+  const ts=`${n.getMonth()+1}/${n.getDate()} ${String(n.getHours()).padStart(2,'0')}:${String(n.getMinutes()).padStart(2,'0')}`;
   try {
-    await updateDoc(doc(db, 'trips', id), { applicants: newApplicants });
+    await updateDoc(doc(db,'trips',id),{applicants:[...(t.applicants||[]),{name:ME.name,kakao:ME.kakao,phone:ME.phone||'',time:ts}]});
     showToast('✅ 신청 완료! 마감 후 채팅링크가 공개됩니다');
-  } catch (e) {
-    showToast('⚠️ 신청 중 오류가 발생했습니다');
-    console.error(e);
-  }
+  } catch(e){showToast('⚠️ 신청 중 오류 발생');console.error(e);}
 };
 
-window.openKakao = function(url) {
-  if (url && url.startsWith('http')) window.open(url, '_blank');
-  else showToast('카카오 오픈채팅 링크를 확인해주세요');
-};
+window.openKakao=function(url){if(url&&url.startsWith('http'))window.open(url,'_blank');else showToast('카카오 오픈채팅 링크를 확인해주세요');};
 
-/* ── My Trips ──────────────────────────────────────────── */
+/* ── 내 일정 (달력 + 한줄 카드) ────────────────── */
 function renderMyTrips() {
-  const el = document.getElementById('mytrips-list');
-  const mine = TRIPS.filter(t => isMine(t));
-  if (!mine.length) {
-    el.innerHTML = '<div class="empty"><i class="ti ti-clipboard-list"></i><p>신청한 출조가 없습니다</p></div>';
-    return;
+  renderCalendar();
+  renderMyList(null);
+}
+
+function renderCalendar() {
+  const myDates = TRIPS.filter(t=>isMine(t)).map(t=>t.date);
+  const y=calYear, m=calMonth;
+  document.getElementById('cal-title').textContent=`${y}년 ${m+1}월`;
+  const dowEl=document.getElementById('cal-dow');
+  dowEl.innerHTML=['일','월','화','수','목','금','토'].map(d=>`<div class="cal-dow">${d}</div>`).join('');
+  const first=new Date(y,m,1).getDay();
+  const days=new Date(y,m+1,0).getDate();
+  const today=new Date(); today.setHours(0,0,0,0);
+  let html='';
+  for(let i=0;i<first;i++) html+=`<div class="cal-day empty"></div>`;
+  for(let d=1;d<=days;d++){
+    const ds=`${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const isToday=new Date(ds).getTime()===today.getTime();
+    const hasTrip=myDates.includes(ds);
+    const isSel=calSelected===ds;
+    html+=`<div class="cal-day${isToday?' today':''}${hasTrip?' has-trip':''}${isSel?' selected':''}" onclick="calSelect('${ds}')">${d}</div>`;
   }
-  el.innerHTML = mine.map(t => {
-    const full = t.closed || isFull(t) || isPastDeadline(t);
-    return `<div class="my-trip-card" onclick="goDetail('${t.id}')">
-      <div class="my-trip-head">
-        <div class="my-trip-title">${t.title}</div>
-        <span class="dday" style="font-size:11px">${dday(t.date)}</span>
+  document.getElementById('cal-grid').innerHTML=html;
+}
+
+window.calMove=function(dir){calMonth+=dir;if(calMonth>11){calMonth=0;calYear++;}else if(calMonth<0){calMonth=11;calYear--;}calSelected=null;renderCalendar();renderMyList(null);};
+window.calSelect=function(ds){calSelected=calSelected===ds?null:ds;renderCalendar();renderMyList(calSelected);};
+
+function renderMyList(filterDate) {
+  const mine=TRIPS.filter(t=>isMine(t)).sort((a,b)=>new Date(a.date)-new Date(b.date));
+  const filtered=filterDate?mine.filter(t=>t.date===filterDate):mine;
+  document.getElementById('my-list-label').textContent=filterDate?`${fmtDate(filterDate)} 출조`:'전체 일정';
+  const el=document.getElementById('mytrips-list');
+  if(!filtered.length){el.innerHTML='<div class="empty"><i class="ti ti-calendar-off"></i><p>'+(filterDate?'해당 날짜 출조가 없습니다':'신청한 출조가 없습니다')+'</p></div>';return;}
+  el.innerHTML=filtered.map(t=>{
+    const full=t.closed||isFull(t)||isPastDeadline(t);
+    const dateObj=new Date(t.date+'T00:00:00');
+    const mon=(dateObj.getMonth()+1)+'월';
+    const day=dateObj.getDate();
+    return `<div class="my-row" onclick="goDetail('${t.id}')">
+      <div class="my-row-date"><div class="mon">${mon}</div><div class="day">${day}</div></div>
+      <div class="my-row-info">
+        <div class="my-row-title">${t.title}</div>
+        <div class="my-row-sub"><i class="ti ti-map-pin" style="font-size:11px"></i> ${t.location} &nbsp;·&nbsp; <i class="ti ti-wallet" style="font-size:11px"></i> ${fmtCost(t.cost)}</div>
       </div>
-      <div class="my-trip-body">
-        <div style="font-size:12px;color:var(--text-sub)">
-          <div style="margin-bottom:3px"><i class="ti ti-calendar" style="font-size:12px;color:var(--ocean-mid)"></i> ${fmtDate(t.date)} ${t.time||''}</div>
-          <div><i class="ti ti-map-pin" style="font-size:12px;color:var(--ocean-mid)"></i> ${t.location}</div>
+      <div class="my-row-right">
+        <div class="dday" style="font-size:11px;margin-bottom:4px">${dday(t.date)}</div>
+        <div style="font-size:11px;font-weight:700;color:${full?'var(--fish)':'var(--sand)'}">
+          ${full?'채팅공개':'모집중'}
         </div>
-        <span style="font-size:12px;font-weight:700;color:${full?'var(--fish)':'var(--sand)'}">
-          ${full?'<i class="ti ti-link"></i> 채팅링크 공개':'<i class="ti ti-clock"></i> 모집중'}
-        </span>
       </div>
     </div>`;
   }).join('');
 }
 
-/* ── Admin ─────────────────────────────────────────────── */
-let adminTab = 'active'; // 'active' | 'past'
+/* ── Admin ───────────────────────────────────── */
+window.switchAdminTab=function(tab){
+  adminTab=tab;
+  document.getElementById('atab-active').className='tab-btn2'+(tab==='active'?' on':'');
+  document.getElementById('atab-past').className='tab-btn2'+(tab==='past'?' on':'');
+  renderAdmin();
+};
 
-function renderAdmin() {
-  if (!ME?.isAdmin) {
-    document.getElementById('admin-list').innerHTML = '<div class="empty"><i class="ti ti-lock"></i><p>운영자 권한이 필요합니다</p></div>';
-    return;
-  }
-
-  // 탭 분류: 지난 출조 = 마감됐거나 날짜가 오늘 이전
-  const today = new Date(); today.setHours(0,0,0,0);
-  const activeTrips = TRIPS.filter(t => !t.closed && !isFull(t) && new Date(t.date) >= today);
-  const pastTrips   = TRIPS.filter(t => t.closed || isFull(t) || new Date(t.date) < today);
-  const list = adminTab === 'active' ? activeTrips : pastTrips;
-
-  const tabBar = `
-    <div style="display:flex;background:var(--card);border-radius:var(--radius-sm);border:.5px solid var(--border);padding:4px;margin-bottom:14px;gap:4px">
-      <button onclick="switchAdminTab('active')" style="flex:1;padding:8px;border:none;border-radius:8px;font-size:13px;font-weight:700;font-family:inherit;cursor:pointer;transition:all .2s;
-        background:${adminTab==='active'?'var(--ocean)':'transparent'};color:${adminTab==='active'?'#fff':'var(--text-hint)'}">
-        모집중 <span style="font-size:11px;opacity:.8">(${activeTrips.length})</span>
-      </button>
-      <button onclick="switchAdminTab('past')" style="flex:1;padding:8px;border:none;border-radius:8px;font-size:13px;font-weight:700;font-family:inherit;cursor:pointer;transition:all .2s;
-        background:${adminTab==='past'?'var(--ocean)':'transparent'};color:${adminTab==='past'?'#fff':'var(--text-hint)'}">
-        지난 출조 <span style="font-size:11px;opacity:.8">(${pastTrips.length})</span>
-      </button>
-    </div>`;
-
-  const el = document.getElementById('admin-list');
-
-  if (!list.length) {
-    el.innerHTML = tabBar + `<div class="empty"><i class="ti ti-fish-off"></i><p>${adminTab==='active'?'모집 중인 출조가 없습니다':'지난 출조가 없습니다'}</p></div>`;
-    return;
-  }
-
-  el.innerHTML = tabBar + list.map(t => {
-    const isPast = adminTab === 'past';
-    const full   = t.closed || isFull(t);
-    const chips  = (t.applicants||[]).map(a => `<span class="chip">${a.name}</span>`).join('');
-
-    // 진행중: 수정 + 마감처리 버튼 / 지난출조: 삭제 버튼만
-    const actionBtns = isPast
-      ? `<button class="btn btn-sm" onclick="deleteTrip('${t.id}',event)"
-           style="background:var(--danger-light);color:var(--danger);padding:7px 12px;border-radius:8px;border:none;cursor:pointer;font-family:inherit;font-weight:700;display:flex;align-items:center;gap:4px">
-           <i class="ti ti-trash" style="font-size:14px"></i> 삭제
-         </button>`
-      : `<div style="display:flex;gap:6px;align-items:center">
-           <button class="btn btn-outline btn-sm" onclick="openEditModal('${t.id}',event)"
-             style="border:.5px solid var(--border);padding:7px 11px;border-radius:8px">
-             <i class="ti ti-edit" style="font-size:14px"></i>
-           </button>
-           ${full
-             ? `<span class="status-badge" style="background:var(--danger-light);color:var(--danger);font-size:11px">마감됨</span>`
-             : `<button class="btn btn-danger btn-sm" onclick="closeTrip('${t.id}',event)">마감처리</button>`
-           }
-         </div>`;
-
+function renderAdmin(){
+  if(!ME?.isAdmin){document.getElementById('admin-list').innerHTML='<div class="empty"><i class="ti ti-lock"></i><p>운영자 권한이 필요합니다</p></div>';return;}
+  const today=new Date();today.setHours(0,0,0,0);
+  const active=TRIPS.filter(t=>!t.closed&&!isFull(t)&&new Date(t.date)>=today);
+  const past=TRIPS.filter(t=>t.closed||isFull(t)||new Date(t.date)<today);
+  const list=adminTab==='active'?active:past;
+  const el=document.getElementById('admin-list');
+  if(!list.length){el.innerHTML='<div class="empty"><i class="ti ti-fish-off"></i><p>'+(adminTab==='active'?'모집 중인 출조가 없습니다':'지난 출조가 없습니다')+'</p></div>';return;}
+  el.innerHTML=list.map(t=>{
+    const isPastTab=adminTab==='past';
+    const full=t.closed||isFull(t);
+    const chips=(t.applicants||[]).map(a=>`<span class="chip">${a.name}</span>`).join('');
+    const actionBtns=isPastTab
+      ?`<button class="btn btn-sm" onclick="deleteTrip('${t.id}',event)" style="background:var(--danger-light);color:var(--danger);padding:7px 12px;border-radius:8px;border:none;cursor:pointer;font-family:inherit;font-weight:700;display:flex;align-items:center;gap:4px"><i class="ti ti-trash" style="font-size:14px"></i> 삭제</button>`
+      :`<div style="display:flex;gap:6px;align-items:center">
+          <button class="btn btn-outline btn-sm" onclick="openEditModal('${t.id}',event)" style="border:.5px solid var(--border);padding:7px 11px;border-radius:8px"><i class="ti ti-edit" style="font-size:14px"></i></button>
+          ${full?`<span class="status-badge" style="background:var(--danger-light);color:var(--danger);font-size:11px">마감됨</span>`:`<button class="btn btn-danger btn-sm" onclick="closeTrip('${t.id}',event)">마감처리</button>`}
+        </div>`;
     return `<div class="admin-card">
       <div class="admin-card-head">
-        <div style="flex:1;min-width:0">
-          <div style="font-size:14px;font-weight:700;margin-bottom:2px">${t.title}</div>
-          <div style="font-size:11px;color:var(--text-hint)">${fmtDate(t.date)} · ${t.location}</div>
-        </div>
+        <div style="flex:1;min-width:0"><div style="font-size:14px;font-weight:700;margin-bottom:2px">${t.title}</div>
+        <div style="font-size:11px;color:var(--text-hint)">${fmtDate(t.date)} · ${t.location}</div></div>
         ${actionBtns}
       </div>
       <div class="admin-card-body">
@@ -815,143 +830,136 @@ function renderAdmin() {
           <div class="stat-box"><div class="stat-num">${(t.capacity||0)-(t.applicants||[]).length}</div><div class="stat-lab">남은자리</div></div>
           <div class="stat-box"><div class="stat-num">${Math.round((t.cost||0)*(t.applicants||[]).length/10000)}만</div><div class="stat-lab">예상합계</div></div>
         </div>
-        ${!isPast ? `
+        ${!isPastTab?`
         <div class="kakao-link-block">
-          <div class="kakao-link-label"><i class="ti ti-brand-kakao" style="font-size:14px"></i> 오픈채팅 링크
-            ${full?'<span style="font-weight:400;color:#A07020">(신청자에게 공개됨)</span>':'<span style="font-weight:400;color:#A07020">(마감 후 자동 공개)</span>'}
-          </div>
-          <input class="kakao-link-input" value="${t.kakaoLink||''}" placeholder="https://open.kakao.com/o/..."
-            onblur="updateKakaoLink('${t.id}',this.value)">
-        </div>` : ''}
-        ${chips ? `<div style="margin-bottom:10px">${chips}</div>` : ''}
+          <div style="font-size:11px;font-weight:700;color:#7A4F00;margin-bottom:6px;display:flex;align-items:center;gap:4px"><i class="ti ti-brand-kakao" style="font-size:14px"></i> 오픈채팅 링크 ${full?'<span style="font-weight:400">(신청자에게 공개됨)</span>':'<span style="font-weight:400">(마감 후 자동 공개)</span>'}</div>
+          <input class="kakao-link-input" value="${t.kakaoLink||''}" placeholder="https://open.kakao.com/o/..." onblur="updateKakaoLink('${t.id}',this.value)">
+        </div>
+        <button class="btn btn-outline" style="font-size:13px;padding:9px;border:.5px solid var(--border);margin-bottom:8px" onclick="openAddMemberModal('${t.id}')">
+          <i class="ti ti-user-plus"></i> 출조 대상자 직접 등록
+        </button>`:''}
+        ${chips?`<div style="margin-bottom:10px">${chips}</div>`:''}
         <button class="btn btn-outline" style="font-size:13px;padding:9px;border:.5px solid var(--border)" onclick="goDetail('${t.id}')">
           <i class="ti ti-eye"></i> 상세 보기
         </button>
-      </div>
-    </div>`;
+      </div></div>`;
   }).join('');
 }
 
-window.switchAdminTab = function(tab) {
-  adminTab = tab;
-  renderAdmin();
+window.closeTrip=async function(id,e){if(e)e.stopPropagation();try{await updateDoc(doc(db,'trips',id),{closed:true});showToast('✅ 마감 완료 — 신청자에게 채팅링크 공개됨');}catch(err){showToast('⚠️ 오류 발생');console.error(err);}};
+window.updateKakaoLink=async function(id,val){try{await updateDoc(doc(db,'trips',id),{kakaoLink:val});}catch(err){console.error(err);}};
+window.deleteTrip=async function(id,e){if(e)e.stopPropagation();if(!confirm('이 출조를 삭제하시겠습니까?\n신청자 정보도 모두 삭제됩니다.'))return;try{await deleteDoc(doc(db,'trips',id));showToast('🗑️ 출조가 삭제되었습니다');}catch(err){showToast('⚠️ 삭제 중 오류 발생');console.error(err);}};
+
+/* ── 운영자: 출조 대상자 직접 등록 ───────────────── */
+window.openAddMemberModal = function(tripId) {
+  document.getElementById('am-trip-id').value = tripId;
+  document.getElementById('am-search').value = '';
+  document.getElementById('am-selected-wrap').style.display = 'none';
+  amSelectedMember = null;
+  // 가입 회원 목록 렌더 (이미 신청한 사람 제외)
+  const t = TRIPS.find(x=>x.id===tripId);
+  const alreadyIn = (t?.applicants||[]).map(a=>a.kakao);
+  const el = document.getElementById('member-select-list');
+  const avail = MEMBERS.filter(m=>!alreadyIn.includes(m.kakao));
+  if (!avail.length) { el.innerHTML='<div style="padding:12px;text-align:center;font-size:13px;color:var(--text-hint)">등록 가능한 회원이 없습니다</div>'; }
+  else { el.innerHTML = avail.map(m=>`
+    <div class="member-select-row" onclick="selectMember('${m.kakao}','${m.name}','${m.phone||''}')">
+      <div class="avatar" style="width:30px;height:30px;font-size:12px">${m.name[0]}</div>
+      <div style="flex:1"><div style="font-size:13px;font-weight:700">${m.name}</div>
+      <div style="font-size:11px;color:var(--text-hint)">@${m.kakao}</div></div>
+    </div>`).join(''); }
+  document.getElementById('add-member-modal').classList.add('open');
 };
 
-window.closeTrip = async function(id, e) {
-  if (e) e.stopPropagation();
-  try {
-    await updateDoc(doc(db, 'trips', id), { closed: true });
-    showToast('✅ 마감 처리 완료 — 신청자에게 채팅링크 공개됨');
-  } catch (err) {
-    showToast('⚠️ 오류가 발생했습니다'); console.error(err);
-  }
+window.searchMember = function() {
+  const kw = document.getElementById('am-search').value.trim().toLowerCase();
+  if (!kw) { showToast('⚠️ 검색어를 입력해주세요'); return; }
+  const tripId = document.getElementById('am-trip-id').value;
+  const t = TRIPS.find(x=>x.id===tripId);
+  const alreadyIn = (t?.applicants||[]).map(a=>a.kakao);
+  const found = MEMBERS.filter(m=>!alreadyIn.includes(m.kakao)&&(m.kakao.toLowerCase().includes(kw)||m.name.includes(kw)));
+  const el = document.getElementById('member-select-list');
+  if (!found.length) { el.innerHTML='<div style="padding:12px;text-align:center;font-size:13px;color:var(--text-hint)">검색 결과가 없습니다</div>'; return; }
+  el.innerHTML = found.map(m=>`
+    <div class="member-select-row" onclick="selectMember('${m.kakao}','${m.name}','${m.phone||''}')">
+      <div class="avatar" style="width:30px;height:30px;font-size:12px">${m.name[0]}</div>
+      <div style="flex:1"><div style="font-size:13px;font-weight:700">${m.name}</div>
+      <div style="font-size:11px;color:var(--text-hint)">@${m.kakao}</div></div>
+    </div>`).join('');
 };
 
-window.updateKakaoLink = async function(id, val) {
-  try {
-    await updateDoc(doc(db, 'trips', id), { kakaoLink: val });
-  } catch (err) { console.error(err); }
+window.selectMember = function(kakao, name, phone) {
+  amSelectedMember = { kakao, name, phone };
+  document.querySelectorAll('.member-select-row').forEach(r=>r.classList.remove('selected'));
+  event.currentTarget.classList.add('selected');
+  document.getElementById('am-selected-info').innerHTML=`<i class="ti ti-user-check"></i> ${name} (@${kakao})`;
+  document.getElementById('am-selected-wrap').style.display = 'block';
 };
 
-/* ── New / Edit Trip Modal ──────────────────────────────── */
-window.openNewModal = function() {
-  document.getElementById('f-editing-id').value = '';
-  document.getElementById('trip-modal-title').innerHTML = '<i class="ti ti-fish"></i> 새 출조 등록';
-  ['f-title','f-location','f-kakao','f-note'].forEach(id => document.getElementById(id).value = '');
-  document.getElementById('f-date').value = '';
-  document.getElementById('f-time').value = '05:00';
-  document.getElementById('f-capacity').value = '10';
-  document.getElementById('f-cost').value = '80000';
-  document.getElementById('f-deadline').value = '';
-  document.getElementById('new-modal').classList.add('open');
-};
-
-window.openEditModal = function(id, e) {
-  if (e) e.stopPropagation();
-  const t = TRIPS.find(x => x.id === id);
+window.confirmAddMember = async function() {
+  if (!amSelectedMember) { showToast('⚠️ 등록할 회원을 선택해주세요'); return; }
+  const tripId = document.getElementById('am-trip-id').value;
+  const t = TRIPS.find(x=>x.id===tripId);
   if (!t) return;
-  document.getElementById('f-editing-id').value = id;
-  document.getElementById('trip-modal-title').innerHTML = '<i class="ti ti-edit"></i> 출조 수정';
-  document.getElementById('f-title').value = t.title || '';
-  document.getElementById('f-date').value = t.date || '';
-  document.getElementById('f-time').value = t.time || '05:00';
-  document.getElementById('f-location').value = t.location || '';
-  document.getElementById('f-capacity').value = t.capacity || 10;
-  document.getElementById('f-cost').value = t.cost || 0;
-  document.getElementById('f-deadline').value = t.deadline || '';
-  document.getElementById('f-kakao').value = t.kakaoLink || '';
-  document.getElementById('f-note').value = t.note || '';
+  const n=new Date();
+  const ts=`${n.getMonth()+1}/${n.getDate()} ${String(n.getHours()).padStart(2,'0')}:${String(n.getMinutes()).padStart(2,'0')} (운영자 등록)`;
+  const newApplicants=[...(t.applicants||[]),{name:amSelectedMember.name,kakao:amSelectedMember.kakao,phone:amSelectedMember.phone||'',time:ts}];
+  try {
+    await updateDoc(doc(db,'trips',tripId),{applicants:newApplicants});
+    closeModal('add-member-modal');
+    showToast(`✅ ${amSelectedMember.name}님이 출조에 등록되었습니다`);
+    amSelectedMember = null;
+  } catch(e) { showToast('⚠️ 등록 중 오류 발생'); console.error(e); }
+};
+
+/* ── 출조 등록/수정 모달 ─────────────────────── */
+window.openNewModal=function(){
+  document.getElementById('f-editing-id').value='';
+  document.getElementById('trip-modal-title').innerHTML='<i class="ti ti-fish"></i> 새 출조 등록';
+  ['f-title','f-location','f-kakao','f-note'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('f-date').value='';document.getElementById('f-time').value='05:00';
+  document.getElementById('f-capacity').value='10';document.getElementById('f-cost').value='80000';
+  document.getElementById('f-deadline').value='';
   document.getElementById('new-modal').classList.add('open');
 };
-
-window.closeModal = function(id) {
-  document.getElementById(id).classList.remove('open');
+window.openEditModal=function(id,e){
+  if(e)e.stopPropagation();
+  const t=TRIPS.find(x=>x.id===id);if(!t)return;
+  document.getElementById('f-editing-id').value=id;
+  document.getElementById('trip-modal-title').innerHTML='<i class="ti ti-edit"></i> 출조 수정';
+  document.getElementById('f-title').value=t.title||'';document.getElementById('f-date').value=t.date||'';
+  document.getElementById('f-time').value=t.time||'05:00';document.getElementById('f-location').value=t.location||'';
+  document.getElementById('f-capacity').value=t.capacity||10;document.getElementById('f-cost').value=t.cost||0;
+  document.getElementById('f-deadline').value=t.deadline||'';document.getElementById('f-kakao').value=t.kakaoLink||'';
+  document.getElementById('f-note').value=t.note||'';
+  document.getElementById('new-modal').classList.add('open');
+};
+window.closeModal=function(id){document.getElementById(id).classList.remove('open');};
+window.submitNewTrip=async function(){
+  const title=document.getElementById('f-title').value.trim();
+  const date=document.getElementById('f-date').value;
+  const loc=document.getElementById('f-location').value.trim();
+  if(!title||!date||!loc){showToast('⚠️ 출조명, 날짜, 장소는 필수입니다');return;}
+  const editingId=document.getElementById('f-editing-id').value;
+  const data={title,date,time:document.getElementById('f-time').value||'05:00',location:loc,
+    capacity:parseInt(document.getElementById('f-capacity').value)||10,
+    cost:parseInt(document.getElementById('f-cost').value)||0,
+    deadline:document.getElementById('f-deadline').value,
+    kakaoLink:document.getElementById('f-kakao').value.trim(),
+    note:document.getElementById('f-note').value.trim()};
+  try{
+    if(editingId){await updateDoc(doc(db,'trips',editingId),data);showToast('✅ 출조가 수정되었습니다');}
+    else{await addDoc(collection(db,'trips'),{...data,closed:false,applicants:[],createdBy:ME.kakao,createdAt:serverTimestamp()});showToast('✅ 출조가 등록되었습니다');}
+    closeModal('new-modal');
+  }catch(err){showToast('⚠️ 저장 중 오류 발생');console.error(err);}
 };
 
-window.submitNewTrip = async function() {
-  const title = document.getElementById('f-title').value.trim();
-  const date = document.getElementById('f-date').value;
-  const loc = document.getElementById('f-location').value.trim();
-  if (!title || !date || !loc) { showToast('⚠️ 출조명, 날짜, 장소는 필수입니다'); return; }
+/* ── Toast ───────────────────────────────────── */
+window.showToast=function(msg){const el=document.getElementById('toast');el.textContent=msg;el.classList.add('show');setTimeout(()=>el.classList.remove('show'),2600);};
 
-  const editingId = document.getElementById('f-editing-id').value;
-  const data = {
-    title,
-    date,
-    time: document.getElementById('f-time').value || '05:00',
-    location: loc,
-    capacity: parseInt(document.getElementById('f-capacity').value) || 10,
-    cost: parseInt(document.getElementById('f-cost').value) || 0,
-    deadline: document.getElementById('f-deadline').value,
-    kakaoLink: document.getElementById('f-kakao').value.trim(),
-    note: document.getElementById('f-note').value.trim(),
-  };
-
-  try {
-    if (editingId) {
-      // 수정 모드
-      await updateDoc(doc(db, 'trips', editingId), data);
-      closeModal('new-modal');
-      showToast('✅ 출조가 수정되었습니다');
-    } else {
-      // 신규 등록
-      await addDoc(collection(db, 'trips'), {
-        ...data,
-        closed: false,
-        applicants: [],
-        createdBy: ME.kakao,
-        createdAt: serverTimestamp()
-      });
-      closeModal('new-modal');
-      showToast('✅ 출조가 등록되었습니다');
-    }
-  } catch (err) {
-    showToast('⚠️ 저장 중 오류가 발생했습니다'); console.error(err);
-  }
-};
-
-window.deleteTrip = async function(id, e) {
-  if (e) e.stopPropagation();
-  if (!confirm('이 출조를 삭제하시겠습니까?\n신청자 정보도 모두 삭제됩니다.')) return;
-  try {
-    await deleteDoc(doc(db, 'trips', id));
-    showToast('🗑️ 출조가 삭제되었습니다');
-  } catch (err) {
-    showToast('⚠️ 삭제 중 오류가 발생했습니다'); console.error(err);
-  }
-};
-
-/* ── Toast ─────────────────────────────────────────────── */
-window.showToast = function(msg) {
-  const el = document.getElementById('toast');
-  el.textContent = msg;
-  el.classList.add('show');
-  setTimeout(() => el.classList.remove('show'), 2600);
-};
-
-/* ── Modal outside click ────────────────────────────────── */
-document.getElementById('new-modal').addEventListener('click', function(e) {
-  if (e.target === this) closeModal('new-modal');
+/* ── Modal outside click ─────────────────────── */
+['new-modal','add-member-modal'].forEach(id=>{
+  document.getElementById(id).addEventListener('click',function(e){if(e.target===this)closeModal(id);});
 });
 </script>
 </body>
