@@ -306,6 +306,7 @@ textarea.form-input{resize:vertical;min-height:110px;line-height:1.6}
         </button>
         <div class="tab-bar">
           <button class="tab-btn2 on" id="atab-active" onclick="switchAdminTab('active')">모집중</button>
+          <button class="tab-btn2" id="atab-pending" onclick="switchAdminTab('pending')">공개예정</button>
           <button class="tab-btn2" id="atab-past" onclick="switchAdminTab('past')">지난 출조</button>
         </div>
         <div id="admin-list"></div>
@@ -401,6 +402,14 @@ textarea.form-input{resize:vertical;min-height:110px;line-height:1.6}
       <div class="form-group"><label class="form-label">1인 비용 (원)</label><input class="form-input" type="number" id="f-cost" value="80000"></div>
     </div>
     <div class="form-group"><label class="form-label">모집 마감일</label><input class="form-input" type="date" id="f-deadline"></div>
+    <div class="form-group">
+      <label class="form-label">신청 오픈 일시 <span style="color:var(--text-hint);font-weight:400">(미설정 시 즉시 공개)</span></label>
+      <div class="form-row">
+        <input class="form-input" type="date" id="f-opendate">
+        <input class="form-input" type="time" id="f-opentime" value="20:00">
+      </div>
+      <div class="form-hint">* 설정한 날짜/시간이 되어야 회원에게 출조가 공개됩니다</div>
+    </div>
     <div class="form-group"><label class="form-label">카카오 오픈채팅 링크</label><input class="form-input" id="f-kakao" placeholder="https://open.kakao.com/o/..."><div class="form-hint">* 마감 후 신청자에게만 공개됩니다</div></div>
     <div class="form-group">
       <label class="form-label">안내사항</label>
@@ -721,8 +730,23 @@ function isMine(t) { return (t.applicants||[]).some(a=>a.kakao===ME?.kakao); }
 function isFull(t) { return (t.applicants||[]).length>=(t.capacity||0); }
 function isPast(t) { const today=new Date();today.setHours(0,0,0,0); return new Date(t.date)<today; }
 function isPastDeadline(t) { return t.deadline && new Date(t.deadline)<new Date(); }
-function canApply(t) { return !t.closed&&!isFull(t)&&!isPastDeadline(t)&&!isMine(t); }
+function canApply(t) { return !t.closed&&!isFull(t)&&!isPastDeadline(t)&&!isMine(t)&&isOpen(t); }
 function slotColor(pct) { if(pct>=1)return'var(--danger)';if(pct>=0.7)return'var(--sand)';return'var(--fish)'; }
+function isOpen(t) {
+  // openAt 없으면 즉시 공개, 있으면 현재 시각 비교
+  if(!t.openAt) return true;
+  return Date.now() >= t.openAt;
+}
+function openCountdown(t) {
+  if(!t.openAt || isOpen(t)) return null;
+  const diff = t.openAt - Date.now();
+  const d = Math.floor(diff/86400000);
+  const h = Math.floor((diff%86400000)/3600000);
+  const m = Math.floor((diff%3600000)/60000);
+  if(d>0) return `${d}일 ${h}시간 후 공개`;
+  if(h>0) return `${h}시간 ${m}분 후 공개`;
+  return `${m}분 후 공개`;
+}
 
 /* ── Navigation ──────────────────────────────── */
 function switchPageRaw(name) {
@@ -755,18 +779,27 @@ window.goBack = function() {
 /* ── Home ────────────────────────────────────── */
 function renderHome() {
   const el = document.getElementById('trip-list');
-  if (!TRIPS.length) { el.innerHTML='<div class="empty"><i class="ti ti-fish-off"></i><p>등록된 출조가 없습니다</p></div>'; return; }
-  el.innerHTML = TRIPS.map(t => {
+  // 일반회원: 공개된 출조만 / 운영자: 전체 표시
+  const visible = TRIPS.filter(t => ME?.isAdmin || isOpen(t));
+  if (!visible.length) { el.innerHTML='<div class="empty"><i class="ti ti-fish-off"></i><p>등록된 출조가 없습니다</p></div>'; return; }
+  el.innerHTML = visible.map(t => {
     const pct=(t.applicants||[]).length/(t.capacity||1);
     const mine=isMine(t);
-    const bc=t.closed||isFull(t)?'b-closed':mine?'b-mine':pct>=0.7?'b-warn':'b-open';
-    const bt=t.closed?'마감됨':isFull(t)?'정원마감':mine?'신청완료':pct>=0.7?'마감임박':'모집중';
+    const notOpenYet = !isOpen(t);
+    const countdown = openCountdown(t);
+    const bc=notOpenYet?'b-warn':t.closed||isFull(t)?'b-closed':mine?'b-mine':pct>=0.7?'b-warn':'b-open';
+    const bt=notOpenYet?'공개예정':t.closed?'마감됨':isFull(t)?'정원마감':mine?'신청완료':pct>=0.7?'마감임박':'모집중';
     return `<div class="trip-card" onclick="goDetail('${t.id}')">
-      <div class="trip-card-top">
+      <div class="trip-card-top" style="${notOpenYet?'background:var(--text-sub)':''}">
         <div style="flex:1;min-width:0"><div class="trip-title">${t.title}</div>
         <div class="trip-date-row"><i class="ti ti-calendar" style="font-size:12px"></i>${fmtDate(t.date)} ${t.time||''} 출발</div></div>
         <div class="badges"><span class="dday">${dday(t.date)}</span><span class="status-badge ${bc}">${bt}</span></div>
       </div>
+      ${notOpenYet?`<div style="background:var(--sand-light);padding:8px 14px;display:flex;align-items:center;gap:6px;border-bottom:.5px solid rgba(245,166,35,.3)">
+        <i class="ti ti-clock" style="font-size:14px;color:var(--sand)"></i>
+        <span style="font-size:12px;font-weight:700;color:#7A4F00">${countdown}</span>
+        <span style="font-size:11px;color:#A07020">(운영자 미리보기)</span>
+      </div>`:''}
       <div class="trip-card-body"><div class="trip-meta">
         <div class="meta-item"><i class="ti ti-map-pin"></i>${t.location}</div>
         <div class="meta-item"><i class="ti ti-wallet"></i>${fmtCost(t.cost)}</div>
@@ -788,7 +821,15 @@ function renderDetail(id) {
   const full=t.closed||isFull(t)||isPastDeadline(t);
   const mine=isMine(t), showLink=full&&mine;
   let btnHtml='';
-  if(showLink) btnHtml=`<div class="chat-reveal">
+  const notOpenYet = !isOpen(t);
+  if(notOpenYet && !ME?.isAdmin) {
+    const countdown = openCountdown(t);
+    btnHtml=`<div style="background:var(--sand-light);border:1.5px dashed var(--sand);border-radius:var(--radius-sm);padding:16px;margin-bottom:14px;text-align:center">
+      <div style="font-size:13px;font-weight:800;color:#7A4F00;margin-bottom:6px"><i class="ti ti-clock"></i> 신청 오픈 대기 중</div>
+      <div style="font-size:20px;font-weight:800;color:var(--sand)">${countdown}</div>
+      <div style="font-size:11px;color:#A07020;margin-top:6px">오픈 시간이 되면 선착순 신청이 시작됩니다</div>
+    </div>`;
+  } else if(showLink) btnHtml=`<div class="chat-reveal">
     <div style="font-size:13px;font-weight:800;color:var(--fish);margin-bottom:10px;display:flex;align-items:center;justify-content:center;gap:5px"><i class="ti ti-brand-hipchat"></i> 오픈채팅방이 열렸습니다!</div>
     <button class="btn btn-kakao" onclick="openKakao('${t.kakaoLink||''}')"><i class="ti ti-brand-kakao" style="font-size:20px"></i> 카카오 오픈채팅 입장하기</button>
     <p style="font-size:11px;color:var(--fish);opacity:.75;margin-top:8px">버튼을 눌러 출조 채팅방에 바로 입장하세요</p></div>`;
@@ -1048,6 +1089,7 @@ window.deleteMember = async function(kakao, name) {
 window.switchAdminTab=function(tab){
   adminTab=tab;
   document.getElementById('atab-active').className='tab-btn2'+(tab==='active'?' on':'');
+  document.getElementById('atab-pending').className='tab-btn2'+(tab==='pending'?' on':'');
   document.getElementById('atab-past').className='tab-btn2'+(tab==='past'?' on':'');
   renderAdmin();
 };
@@ -1055,17 +1097,24 @@ window.switchAdminTab=function(tab){
 function renderAdmin(){
   if(!ME?.isAdmin){document.getElementById('admin-list').innerHTML='<div class="empty"><i class="ti ti-lock"></i><p>운영자 권한이 필요합니다</p></div>';return;}
   const today=new Date();today.setHours(0,0,0,0);
-  const active=TRIPS.filter(t=>!t.closed&&!isFull(t)&&new Date(t.date)>=today);
+  const pending=TRIPS.filter(t=>!t.closed&&!isFull(t)&&new Date(t.date)>=today&&!isOpen(t));
+  const active=TRIPS.filter(t=>!t.closed&&!isFull(t)&&new Date(t.date)>=today&&isOpen(t));
   const past=TRIPS.filter(t=>t.closed||isFull(t)||new Date(t.date)<today);
-  const list=adminTab==='active'?active:past;
+  const list=adminTab==='active'?active:adminTab==='pending'?pending:past;
   const el=document.getElementById('admin-list');
   if(!list.length){el.innerHTML='<div class="empty"><i class="ti ti-fish-off"></i><p>'+(adminTab==='active'?'모집 중인 출조가 없습니다':'지난 출조가 없습니다')+'</p></div>';return;}
   el.innerHTML=list.map(t=>{
     const isPastTab=adminTab==='past';
     const full=t.closed||isFull(t);
     const chips=(t.applicants||[]).map(a=>`<span class="chip">${a.name}</span>`).join('');
+    const isPendingTab = adminTab==='pending';
     const actionBtns=isPastTab
       ?`<button class="btn btn-sm" onclick="deleteTrip('${t.id}',event)" style="background:var(--danger-light);color:var(--danger);padding:7px 12px;border-radius:8px;border:none;cursor:pointer;font-family:inherit;font-weight:700;display:flex;align-items:center;gap:4px"><i class="ti ti-trash" style="font-size:14px"></i> 삭제</button>`
+      :isPendingTab
+      ?`<div style="display:flex;gap:6px;align-items:center">
+          <button class="btn btn-outline btn-sm" onclick="openEditModal('${t.id}',event)" style="border:.5px solid var(--border);padding:7px 11px;border-radius:8px"><i class="ti ti-edit" style="font-size:14px"></i></button>
+          <button class="btn btn-sm" onclick="openNow('${t.id}',event)" style="background:var(--fish-light);color:var(--fish);padding:7px 11px;border:none;border-radius:8px;cursor:pointer;font-family:inherit;font-weight:700;font-size:12px"><i class="ti ti-player-play" style="font-size:13px"></i> 즉시공개</button>
+        </div>`
       :`<div style="display:flex;gap:6px;align-items:center">
           <button class="btn btn-outline btn-sm" onclick="openEditModal('${t.id}',event)" style="border:.5px solid var(--border);padding:7px 11px;border-radius:8px"><i class="ti ti-edit" style="font-size:14px"></i></button>
           ${full?`<span class="status-badge" style="background:var(--danger-light);color:var(--danger);font-size:11px">마감됨</span>`:`<button class="btn btn-danger btn-sm" onclick="closeTrip('${t.id}',event)">마감처리</button>`}
@@ -1083,7 +1132,15 @@ function renderAdmin(){
           <div class="stat-box"><div class="stat-num" style="color:var(--danger)">${(t.applicants||[]).filter(a=>!a.paid).length}</div><div class="stat-lab">미입금</div></div>
           <div class="stat-box"><div class="stat-num">${Math.round((t.cost||0)*(t.applicants||[]).filter(a=>a.paid).length/10000)}만</div><div class="stat-lab">입금합계</div></div>
         </div>
-        ${!isPastTab?`
+        ${isPendingTab&&t.openAt?`
+        <div style="background:var(--sand-light);border:.5px solid rgba(245,166,35,.35);border-radius:var(--radius-xs);padding:10px 12px;margin-bottom:10px;display:flex;align-items:center;gap:8px">
+          <i class="ti ti-clock" style="color:var(--sand);font-size:16px"></i>
+          <div>
+            <div style="font-size:11px;font-weight:700;color:#7A4F00">공개 예정 일시</div>
+            <div style="font-size:13px;font-weight:700;color:#7A4F00">${new Date(t.openAt).toLocaleString('ko-KR')}</div>
+          </div>
+        </div>`:''}
+        ${!isPastTab&&!isPendingTab?`
         <div class="kakao-link-block">
           <div style="font-size:11px;font-weight:700;color:#7A4F00;margin-bottom:6px;display:flex;align-items:center;gap:4px"><i class="ti ti-brand-kakao" style="font-size:14px"></i> 오픈채팅 링크 ${full?'<span style="font-weight:400">(신청자에게 공개됨)</span>':'<span style="font-weight:400">(마감 후 자동 공개)</span>'}</div>
           <input class="kakao-link-input" value="${t.kakaoLink||''}" placeholder="https://open.kakao.com/o/..." onblur="updateKakaoLink('${t.id}',this.value)">
@@ -1098,6 +1155,15 @@ function renderAdmin(){
       </div></div>`;
   }).join('');
 }
+
+window.openNow = async function(id, e) {
+  if(e) e.stopPropagation();
+  if(!confirm('지금 바로 출조를 공개할까요? 모든 회원에게 즉시 노출됩니다.')) return;
+  try {
+    await updateDoc(doc(db,'trips',id), { openAt: Date.now() });
+    showToast('✅ 출조가 즉시 공개되었습니다');
+  } catch(err) { showToast('⚠️ 오류 발생'); console.error(err); }
+};
 
 window.closeTrip=async function(id,e){if(e)e.stopPropagation();try{await updateDoc(doc(db,'trips',id),{closed:true});showToast('✅ 마감 완료 — 신청자에게 채팅링크 공개됨');}catch(err){showToast('⚠️ 오류 발생');console.error(err);}};
 window.updateKakaoLink=async function(id,val){try{await updateDoc(doc(db,'trips',id),{kakaoLink:val});}catch(err){console.error(err);}};
@@ -1173,6 +1239,7 @@ window.openNewModal=function(){
   document.getElementById('f-date').value='';document.getElementById('f-time').value='05:00';
   document.getElementById('f-capacity').value='10';document.getElementById('f-cost').value='80000';
   document.getElementById('f-deadline').value='';
+  document.getElementById('f-opendate').value='';document.getElementById('f-opentime').value='20:00';
   document.getElementById('new-modal').classList.add('open');
 };
 window.openEditModal=function(id,e){
@@ -1185,6 +1252,9 @@ window.openEditModal=function(id,e){
   document.getElementById('f-capacity').value=t.capacity||10;document.getElementById('f-cost').value=t.cost||0;
   document.getElementById('f-deadline').value=t.deadline||'';document.getElementById('f-kakao').value=t.kakaoLink||'';
   document.getElementById('f-note').value=t.note||'';
+  // 공개 일시 복원
+  if(t.openAt){ const d=new Date(t.openAt); document.getElementById('f-opendate').value=d.toISOString().split('T')[0]; document.getElementById('f-opentime').value=d.toTimeString().slice(0,5); }
+  else { document.getElementById('f-opendate').value=''; document.getElementById('f-opentime').value='20:00'; }
   document.getElementById('new-modal').classList.add('open');
 };
 window.closeModal=function(id){document.getElementById(id).classList.remove('open');};
@@ -1194,12 +1264,18 @@ window.submitNewTrip=async function(){
   const loc=document.getElementById('f-location').value.trim();
   if(!title||!date||!loc){showToast('⚠️ 출조명, 날짜, 장소는 필수입니다');return;}
   const editingId=document.getElementById('f-editing-id').value;
+  // 공개 일시 계산
+  const openDate = document.getElementById('f-opendate').value;
+  const openTime = document.getElementById('f-opentime').value || '20:00';
+  const openAt   = openDate ? new Date(openDate + 'T' + openTime).getTime() : null;
+
   const data={title,date,time:document.getElementById('f-time').value||'05:00',location:loc,
     capacity:parseInt(document.getElementById('f-capacity').value)||10,
     cost:parseInt(document.getElementById('f-cost').value)||0,
     deadline:document.getElementById('f-deadline').value,
     kakaoLink:document.getElementById('f-kakao').value.trim(),
-    note:document.getElementById('f-note').value.trim()};
+    note:document.getElementById('f-note').value.trim(),
+    openAt};
   try{
     if(editingId){await updateDoc(doc(db,'trips',editingId),data);showToast('✅ 출조가 수정되었습니다');}
     else{await addDoc(collection(db,'trips'),{...data,closed:false,applicants:[],createdBy:ME.kakao,createdAt:serverTimestamp()});showToast('✅ 출조가 등록되었습니다');}
