@@ -434,49 +434,78 @@ calYear = now.getFullYear(); calMonth = now.getMonth();
 // 카카오 SDK 초기화
 Kakao.init('d071eec6491ca0fa33e56531f7dd0861');
 
-setTimeout(() => {
+setTimeout(async () => {
   document.getElementById('loading').classList.add('hide');
+  // 카카오 로그인 콜백 처리 (URL에 code 파라미터가 있을 때)
+  const params = new URLSearchParams(window.location.search);
+  if (params.get('code')) {
+    await handleKakaoCallback();
+    return;
+  }
   const saved = localStorage.getItem('chuljo_me');
   if (saved) { ME = JSON.parse(saved); afterLogin(); }
 }, 800);
 
-/* ── 카카오 로그인 ────────────────────────────── */
+/* ── 카카오 로그인 (SDK v2 방식) ─────────────── */
 window.kakaoLogin = function() {
   if (!Kakao.isInitialized()) { showToast('⚠️ 카카오 SDK 초기화 오류'); return; }
-  Kakao.Auth.login({
-    success: function(authObj) {
-      Kakao.API.request({
-        url: '/v2/user/me',
-        success: async function(res) {
-          const kakaoId = 'kakao_' + res.id;
-          const kakaoNick = res.kakao_account?.profile?.nickname || res.properties?.nickname || '';
-          const kakaoImg  = res.kakao_account?.profile?.profile_image_url || '';
-          // Firebase에서 기존 회원 확인
-          try {
-            const snap = await getDoc(doc(db, 'users', kakaoId));
-            if (snap.exists()) {
-              ME = { kakao: kakaoId, ...snap.data() };
-              localStorage.setItem('chuljo_me', JSON.stringify(ME));
-              afterLogin();
-              showToast('✅ 환영합니다, ' + ME.name + '님!');
-            } else {
-              // 신규 → 이름 확인 폼
-              document.getElementById('login-section').style.display = 'none';
-              document.getElementById('register-section').style.display = 'block';
-              document.getElementById('reg-kakao').value = kakaoId;
-              document.getElementById('reg-name').value = kakaoNick;
-              document.getElementById('reg-guide-text').textContent = '카카오 계정으로 신규 가입합니다. 정보를 확인해주세요.';
-            }
-          } catch(e) { showToast('⚠️ DB 오류. 잠시 후 다시 시도해주세요'); console.error(e); }
-        },
-        fail: function(err) { showToast('⚠️ 카카오 정보 조회 실패'); console.error(err); }
-      });
-    },
-    fail: function(err) {
-      showToast('⚠️ 카카오 로그인 실패. 아이디 직접 입력을 이용해주세요');
-      console.error(err);
-    }
+  // 신버전 SDK: Kakao.Auth.authorize 사용
+  Kakao.Auth.authorize({
+    redirectUri: 'https://yourkocs.github.io/chuljo'
   });
+};
+
+// 페이지 로드 시 카카오 인증 코드 처리
+async function handleKakaoCallback() {
+  const params = new URLSearchParams(window.location.search);
+  const code = params.get('code');
+  const error = params.get('error');
+  if (error) { showToast('⚠️ 카카오 로그인이 취소되었습니다'); return; }
+  if (!code) return;
+
+  // URL에서 code 파라미터 제거 (뒤로가기 방지)
+  window.history.replaceState({}, document.title, window.location.pathname);
+
+  showToast('카카오 로그인 처리 중...');
+  try {
+    // REST API로 토큰 교환
+    const tokenRes = await fetch('https://kauth.kakao.com/oauth/token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        grant_type: 'authorization_code',
+        client_id: 'd071eec6491ca0fa33e56531f7dd0861',
+        redirect_uri: 'https://yourkocs.github.io/chuljo',
+        code: code
+      })
+    });
+    const tokenData = await tokenRes.json();
+    if (!tokenData.access_token) { showToast('⚠️ 카카오 토큰 오류'); console.error(tokenData); return; }
+
+    // 사용자 정보 조회
+    const userRes = await fetch('https://kapi.kakao.com/v2/user/me', {
+      headers: { Authorization: 'Bearer ' + tokenData.access_token }
+    });
+    const userData = await userRes.json();
+    const kakaoId   = 'kakao_' + userData.id;
+    const kakaoNick = userData.kakao_account?.profile?.nickname || userData.properties?.nickname || '';
+
+    // Firebase 회원 확인
+    const snap = await getDoc(doc(db, 'users', kakaoId));
+    if (snap.exists()) {
+      ME = { kakao: kakaoId, ...snap.data() };
+      localStorage.setItem('chuljo_me', JSON.stringify(ME));
+      afterLogin();
+      showToast('✅ 환영합니다, ' + ME.name + '님!');
+    } else {
+      // 신규 → 가입 폼
+      document.getElementById('login-section').style.display = 'none';
+      document.getElementById('register-section').style.display = 'block';
+      document.getElementById('reg-kakao').value = kakaoId;
+      document.getElementById('reg-name').value = kakaoNick;
+      document.getElementById('reg-guide-text').textContent = '카카오 계정으로 신규 가입합니다. 정보를 확인해주세요.';
+    }
+  } catch(e) { showToast('⚠️ 카카오 로그인 처리 중 오류 발생'); console.error(e); }
 };
 
 /* ── 수동 로그인 (아이디 입력) ────────────────── */
@@ -545,9 +574,9 @@ function afterLogin() {
 window.doLogout = function() {
   if (unsubTrips) unsubTrips();
   if (unsubMembers) unsubMembers();
-  // 카카오 로그아웃
-  if (Kakao.isInitialized() && Kakao.Auth.getAccessToken()) {
-    Kakao.Auth.logout(() => { console.log('카카오 로그아웃 완료'); });
+  // 카카오 로그아웃 (신버전 SDK)
+  if (Kakao.isInitialized()) {
+    try { Kakao.Auth.setAccessToken(null); } catch(e) {}
   }
   localStorage.removeItem('chuljo_me');
   ME = null; TRIPS = []; MEMBERS = [];
