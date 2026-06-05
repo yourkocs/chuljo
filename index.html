@@ -330,14 +330,34 @@ body{font-family:'Noto Sans KR',sans-serif;background:var(--bg);color:var(--text
         <div style="color:#fff;font-size:18px;font-weight:800" id="profile-name-disp">-</div>
         <div style="color:rgba(255,255,255,.7);font-size:13px;margin-top:3px" id="profile-kakao-disp">-</div>
       </div>
+      <!-- 연락처 미입력 경고 -->
+      <div id="phone-warning" style="display:none;background:var(--sand-light);border:.5px solid rgba(245,166,35,.4);border-radius:var(--radius-sm);padding:11px 14px;margin-bottom:10px;display:flex;align-items:center;gap:8px">
+        <i class="ti ti-alert-triangle" style="color:var(--sand);font-size:18px;flex-shrink:0"></i>
+        <div style="flex:1">
+          <div style="font-size:13px;font-weight:700;color:#7A4F00">연락처가 등록되지 않았습니다</div>
+          <div style="font-size:11px;color:#A07020;margin-top:2px">운영자가 출조 안내 시 연락처가 필요합니다</div>
+        </div>
+        <button onclick="openEditProfile()" style="background:var(--sand);color:#fff;border:none;border-radius:6px;padding:6px 10px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;flex-shrink:0">입력</button>
+      </div>
+
       <div class="profile-section">
         <div class="profile-row"><span class="profile-row-label"><i class="ti ti-user"></i> 이름</span><span style="font-weight:600" id="p-name">-</span></div>
         <div class="profile-row"><span class="profile-row-label"><i class="ti ti-brand-kakao"></i> 카톡 아이디</span><span style="font-weight:600" id="p-kakao">-</span></div>
-        <div class="profile-row"><span class="profile-row-label"><i class="ti ti-phone"></i> 연락처</span><span style="font-weight:600" id="p-phone">-</span></div>
+        <div class="profile-row" onclick="openEditProfile()" style="cursor:pointer">
+          <span class="profile-row-label"><i class="ti ti-phone"></i> 연락처</span>
+          <div style="display:flex;align-items:center;gap:6px">
+            <span style="font-weight:600" id="p-phone">-</span>
+            <i class="ti ti-pencil" style="font-size:14px;color:var(--text-hint)"></i>
+          </div>
+        </div>
         <div class="profile-row"><span class="profile-row-label"><i class="ti ti-shield-check"></i> 역할</span><span style="font-weight:600" id="p-role">-</span></div>
       </div>
       <div class="profile-section">
-        <div class="divider-label">계정</div>
+        <div class="divider-label">계정 설정</div>
+        <div class="profile-row" onclick="openEditProfile()" style="cursor:pointer">
+          <span class="profile-row-label"><i class="ti ti-user-edit"></i> 프로필 수정</span>
+          <i class="ti ti-chevron-right" style="color:var(--text-hint)"></i>
+        </div>
         <div class="profile-row" onclick="doLogout()" style="cursor:pointer">
           <span class="profile-row-label"><i class="ti ti-logout"></i> 로그아웃</span>
           <i class="ti ti-chevron-right" style="color:var(--text-hint)"></i>
@@ -413,6 +433,29 @@ body{font-family:'Noto Sans KR',sans-serif;background:var(--bg);color:var(--text
     <div style="display:flex;gap:10px">
       <button class="btn btn-primary" style="flex:1" onclick="confirmAddMember()"><i class="ti ti-user-check"></i> 등록하기</button>
       <button class="btn btn-outline" style="flex:0 0 72px;border:.5px solid var(--border)" onclick="closeModal('add-member-modal')">취소</button>
+    </div>
+  </div>
+</div>
+
+<!-- 프로필 수정 모달 -->
+<div class="modal-overlay" id="edit-profile-modal">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title"><i class="ti ti-user-edit"></i> 프로필 수정</div>
+    <div class="form-group">
+      <label class="form-label">이름</label>
+      <input class="form-input" id="ep-name" placeholder="홍길동">
+    </div>
+    <div class="form-group">
+      <label class="form-label">연락처 *</label>
+      <input class="form-input" id="ep-phone" placeholder="010-0000-0000" type="tel">
+      <div class="form-hint">* 운영자가 출조 안내 시 사용됩니다</div>
+    </div>
+    <div style="display:flex;gap:10px;margin-top:4px">
+      <button class="btn btn-primary" style="flex:1" onclick="saveProfile()">
+        <i class="ti ti-check"></i> 저장하기
+      </button>
+      <button class="btn btn-outline" style="flex:0 0 72px;border:.5px solid var(--border)" onclick="closeModal('edit-profile-modal')">취소</button>
     </div>
   </div>
 </div>
@@ -589,6 +632,9 @@ function afterLogin() {
   document.getElementById('p-kakao').textContent = ME.kakao;
   document.getElementById('p-phone').textContent = ME.phone || '-';
   document.getElementById('p-role').textContent = ME.isAdmin ? '운영자' : '일반 회원';
+  // 연락처 미입력 경고
+  const warn = document.getElementById('phone-warning');
+  if (warn) warn.style.display = ME.phone ? 'none' : 'flex';
   if (ME.isAdmin) document.getElementById('admin-nav-btn').style.display = 'flex';
   document.getElementById('bottomnav').style.display = 'flex';
   startSync();
@@ -1108,11 +1154,40 @@ window.submitNewTrip=async function(){
   }catch(err){showToast('⚠️ 저장 중 오류 발생');console.error(err);}
 };
 
+/* ── 프로필 수정 ─────────────────────────────── */
+window.openEditProfile = function() {
+  document.getElementById('ep-name').value  = ME.name  || '';
+  document.getElementById('ep-phone').value = ME.phone || '';
+  document.getElementById('edit-profile-modal').classList.add('open');
+};
+
+window.saveProfile = async function() {
+  const name  = document.getElementById('ep-name').value.trim();
+  const phone = document.getElementById('ep-phone').value.trim();
+  if (!name) { showToast('⚠️ 이름을 입력해주세요'); return; }
+  try {
+    await updateDoc(doc(db, 'users', ME.kakao), { name, phone });
+    ME.name  = name;
+    ME.phone = phone;
+    localStorage.setItem('chuljo_me', JSON.stringify(ME));
+    // UI 업데이트
+    document.getElementById('profile-avatar').textContent    = name[0];
+    document.getElementById('profile-name-disp').textContent = name;
+    document.getElementById('p-name').textContent  = name;
+    document.getElementById('p-phone').textContent = phone || '-';
+    // 연락처 경고 숨기기
+    const warn = document.getElementById('phone-warning');
+    if (warn) warn.style.display = phone ? 'none' : 'flex';
+    closeModal('edit-profile-modal');
+    showToast('✅ 프로필이 저장되었습니다');
+  } catch(e) { showToast('⚠️ 저장 중 오류 발생'); console.error(e); }
+};
+
 /* ── Toast ───────────────────────────────────── */
 window.showToast=function(msg){const el=document.getElementById('toast');el.textContent=msg;el.classList.add('show');setTimeout(()=>el.classList.remove('show'),2600);};
 
 /* ── Modal outside click ─────────────────────── */
-['new-modal','add-member-modal'].forEach(id=>{
+['new-modal','add-member-modal','edit-profile-modal'].forEach(id=>{
   document.getElementById(id).addEventListener('click',function(e){if(e.target===this)closeModal(id);});
 });
 </script>
