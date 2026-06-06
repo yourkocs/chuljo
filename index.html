@@ -973,15 +973,31 @@ function renderMyList(filterDate) {
     const dateObj=new Date(t.date+'T00:00:00');
     const mon=(dateObj.getMonth()+1)+'월';
     const day=dateObj.getDate();
+    // 내 입금 여부 확인
+    const myApplicant=(t.applicants||[]).find(a=>a.kakao===ME?.kakao);
+    const paid=myApplicant?.paid||false;
+    // 날짜 지난 출조 여부
+    const isPastTrip=new Date(t.date)<new Date();
     return `<div class="my-row" onclick="goDetail('${t.id}')">
-      <div class="my-row-date"><div class="mon">${mon}</div><div class="day">${day}</div></div>
+      <div class="my-row-date" style="background:${isPastTrip?'var(--text-hint)':'var(--ocean)'}">
+        <div class="mon">${mon}</div><div class="day">${day}</div>
+      </div>
       <div class="my-row-info">
         <div class="my-row-title">${t.title}</div>
-        <div class="my-row-sub"><i class="ti ti-map-pin" style="font-size:11px"></i> ${t.location} &nbsp;·&nbsp; <i class="ti ti-wallet" style="font-size:11px"></i> ${fmtCost(t.cost)}</div>
+        <div class="my-row-sub">
+          <i class="ti ti-map-pin" style="font-size:11px"></i> ${t.location}
+          &nbsp;·&nbsp;
+          <i class="ti ti-wallet" style="font-size:11px"></i> ${fmtCost(t.cost)}
+        </div>
       </div>
       <div class="my-row-right">
-        <div class="dday" style="font-size:11px;margin-bottom:4px">${dday(t.date)}</div>
-        <div style="font-size:11px;font-weight:700;color:${full?'var(--fish)':'var(--sand)'}">
+        <div class="dday" style="font-size:11px;margin-bottom:5px">${dday(t.date)}</div>
+        <div style="font-size:11px;font-weight:700;padding:3px 8px;border-radius:20px;
+          background:${paid?'var(--fish-light)':'var(--danger-light)'};
+          color:${paid?'var(--fish)':'var(--danger)'}">
+          ${paid?'✅ 입금':'💰 미입금'}
+        </div>
+        <div style="font-size:10px;color:var(--text-hint);margin-top:4px;text-align:right">
           ${full?'채팅공개':'모집중'}
         </div>
       </div>
