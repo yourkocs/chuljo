@@ -33,7 +33,7 @@ body{font-family:'Noto Sans KR',sans-serif;background:var(--bg);color:var(--text
 /* Scroll */
 .scroll-area{flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;padding-bottom:calc(var(--bottomnav-h) + var(--safe-bottom) + 8px)}
 .scroll-area::-webkit-scrollbar{display:none}
-.page{display:none;padding:16px}.page.active{display:block}
+.page{display:none;padding:16px}.page.active{display:block}#alert-banner-wrap:not(:empty){margin-bottom:4px}
 /* Bottomnav */
 .bottomnav{height:calc(var(--bottomnav-h) + var(--safe-bottom));padding-bottom:var(--safe-bottom);background:var(--card);border-top:.5px solid var(--border);display:flex;flex-shrink:0;z-index:50}
 .nav-btn{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;border:none;background:none;cursor:pointer;color:var(--text-hint);font-size:10px;font-family:inherit;font-weight:600;padding:8px 4px;transition:color .15s}
@@ -172,6 +172,37 @@ textarea.form-input{resize:vertical;min-height:110px;line-height:1.6}
 .empty i{font-size:48px;margin-bottom:10px;display:block;opacity:.3}
 /* Sync */
 .sync-dot{width:7px;height:7px;border-radius:50%;background:#4CAF50;display:inline-block;margin-left:6px}
+/* ── 알림 배너 ── */
+.alert-banner{
+  border-radius:var(--radius-sm);padding:12px 14px;
+  margin-bottom:10px;display:flex;align-items:flex-start;gap:10px;
+  animation:slideDown .3s ease;cursor:pointer;
+  transition:transform .15s;
+}
+.alert-banner:active{transform:scale(.98)}
+@keyframes slideDown{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:translateY(0)}}
+.alert-banner.type-unpaid{background:var(--danger-light);border:1px solid rgba(201,53,53,0.2)}
+.alert-banner.type-new-trip{background:var(--fish-light);border:1px solid rgba(30,138,82,0.2)}
+.alert-banner.type-chat{background:var(--sand-light);border:1px solid rgba(245,166,35,0.3)}
+.alert-banner.type-open{background:var(--ocean-light);border:1px solid rgba(26,111,168,0.2)}
+.alert-icon{font-size:22px;flex-shrink:0;margin-top:1px}
+.alert-body{flex:1;min-width:0}
+.alert-title{font-size:13px;font-weight:700;margin-bottom:2px}
+.alert-title.type-unpaid{color:var(--danger)}
+.alert-title.type-new-trip{color:var(--fish)}
+.alert-title.type-chat{color:#7A4F00}
+.alert-title.type-open{color:var(--ocean)}
+.alert-desc{font-size:11px;line-height:1.5}
+.alert-desc.type-unpaid{color:var(--danger);opacity:.8}
+.alert-desc.type-new-trip{color:var(--fish);opacity:.8}
+.alert-desc.type-chat{color:#A07020}
+.alert-desc.type-open{color:var(--ocean);opacity:.8}
+.alert-close{width:20px;height:20px;border-radius:50%;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:12px;flex-shrink:0;background:rgba(0,0,0,0.06);color:var(--text-sub)}
+.alert-action{display:inline-flex;align-items:center;gap:4px;margin-top:6px;font-size:11px;font-weight:700;padding:4px 10px;border-radius:20px;border:none;cursor:pointer;font-family:inherit}
+.alert-action.type-unpaid{background:var(--danger);color:#fff}
+.alert-action.type-new-trip{background:var(--fish);color:#fff}
+.alert-action.type-chat{background:var(--sand);color:#fff}
+.alert-action.type-open{background:var(--ocean);color:#fff}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
 .sync-dot{animation:pulse 2s infinite}
 .sync-dot.off{background:#F44336;animation:none}
@@ -261,6 +292,8 @@ textarea.form-input{resize:vertical;min-height:110px;line-height:1.6}
 
     <!-- 홈 -->
     <div id="page-home" class="page">
+      <!-- 알림 배너 영역 -->
+      <div id="alert-banner-wrap"></div>
       <p class="sec-title" style="padding-top:4px">모집 중인 출조</p>
       <div id="trip-list"></div>
     </div>
@@ -411,6 +444,7 @@ textarea.form-input{resize:vertical;min-height:110px;line-height:1.6}
       <div class="form-hint">* 설정한 날짜/시간이 되어야 회원에게 출조가 공개됩니다</div>
     </div>
     <div class="form-group"><label class="form-label">카카오 오픈채팅 링크</label><input class="form-input" id="f-kakao" placeholder="https://open.kakao.com/o/..."><div class="form-hint">* 마감 후 신청자에게만 공개됩니다</div></div>
+    <div class="form-group"><label class="form-label">참여코드 <span style="color:var(--text-hint);font-weight:400">(선택)</span></label><input class="form-input" id="f-joincode" placeholder="예) FISH2024"><div class="form-hint">* 오픈채팅방 참여코드가 있을 경우 입력하세요</div></div>
     <div class="form-group">
       <label class="form-label">안내사항</label>
       <textarea class="form-input" id="f-note" placeholder="예) 낚시대 개인 지참&#10;미끼 현장 제공&#10;구명조끼 필수" rows="5" style="resize:vertical;min-height:110px;line-height:1.6"></textarea>
@@ -688,6 +722,7 @@ function startSync() {
       TRIPS = snap.docs.map(d => ({ id: d.id, ...d.data() }));
       dot.className = 'sync-dot';
       document.getElementById('db-status').textContent = '실시간 연결됨';
+      if(currentPage==='home') renderAlerts();
       rerender();
     },
     err => { dot.className = 'sync-dot off'; document.getElementById('db-status').textContent = '연결 오류'; console.error(err); }
@@ -777,7 +812,131 @@ window.goBack = function() {
 };
 
 /* ── Home ────────────────────────────────────── */
+/* ── 홈 알림 배너 ─────────────────────────── */
+let dismissedAlerts = JSON.parse(localStorage.getItem('dismissed_alerts')||'[]');
+
+function renderAlerts() {
+  const wrap = document.getElementById('alert-banner-wrap');
+  if(!wrap || !ME) return;
+  const alerts = [];
+
+  // ① 미입금 알림 — 내가 신청한 출조 중 미입금 항목
+  const unpaidTrips = TRIPS.filter(t => {
+    const me = (t.applicants||[]).find(a=>a.kakao===ME.kakao);
+    const full = t.closed||isFull(t)||isPastDeadline(t);
+    return me && !me.paid && full && !isPast(t);
+  });
+  if(unpaidTrips.length > 0) {
+    const names = unpaidTrips.map(t=>t.title).join(', ');
+    alerts.push({
+      id: 'unpaid_'+unpaidTrips.map(t=>t.id).join('_'),
+      type: 'unpaid',
+      icon: '💰',
+      title: `미입금 출조 ${unpaidTrips.length}건`,
+      desc: names,
+      action: '입금 확인하기',
+      onClick: ()=>{ switchPage('mytrips', document.querySelector('.nav-btn[data-page="mytrips"]')); }
+    });
+  }
+
+  // ② 채팅방 오픈 알림 — 마감됐는데 아직 채팅방 안 들어간 출조
+  const chatOpenTrips = TRIPS.filter(t => {
+    const me = (t.applicants||[]).find(a=>a.kakao===ME.kakao);
+    const full = t.closed||isFull(t)||isPastDeadline(t);
+    return me && full && t.kakaoLink && !isPast(t);
+  });
+  if(chatOpenTrips.length > 0) {
+    alerts.push({
+      id: 'chat_'+chatOpenTrips.map(t=>t.id).join('_'),
+      type: 'chat',
+      icon: '💬',
+      title: '채팅방이 열렸습니다!',
+      desc: chatOpenTrips.map(t=>t.title).join(', '),
+      action: '채팅방 입장',
+      onClick: ()=>{ goDetail(chatOpenTrips[0].id); }
+    });
+  }
+
+  // ③ 새 출조 알림 — 최근 3일 내 등록된 출조 중 미신청
+  const recentTrips = TRIPS.filter(t => {
+    const created = t.createdAt?.toDate ? t.createdAt.toDate() : null;
+    const isRecent = created && (Date.now()-created.getTime()) < 3*86400000;
+    return isRecent && !isMine(t) && isOpen(t) && !t.closed && !isFull(t);
+  });
+  if(recentTrips.length > 0) {
+    alerts.push({
+      id: 'new_'+recentTrips.map(t=>t.id).join('_'),
+      type: 'new-trip',
+      icon: '🎣',
+      title: `새 출조 ${recentTrips.length}건 등록됨`,
+      desc: recentTrips.map(t=>t.title).join(', '),
+      action: '확인하기',
+      onClick: ()=>{ document.querySelector('.scroll-area').scrollTop=200; }
+    });
+  }
+
+  // ④ 공개 예정 출조 알림 (운영자만) — 오늘 공개 예정
+  if(ME.isAdmin) {
+    const pendingToday = TRIPS.filter(t => {
+      if(!t.openAt || isOpen(t)) return false;
+      const diff = t.openAt - Date.now();
+      return diff > 0 && diff < 24*3600000;
+    });
+    if(pendingToday.length > 0) {
+      alerts.push({
+        id: 'pending_'+pendingToday.map(t=>t.id).join('_'),
+        type: 'open',
+        icon: '⏰',
+        title: `오늘 공개 예정 출조 ${pendingToday.length}건`,
+        desc: pendingToday.map(t=>{
+          const d=new Date(t.openAt);
+          return `${t.title} (${d.getHours()}:${String(d.getMinutes()).padStart(2,'0')} 공개)`;
+        }).join(', '),
+        action: '관리하기',
+        onClick: ()=>{ switchPage('admin', document.querySelector('.nav-btn[data-page="admin"]')); switchAdminTab('pending'); }
+      });
+    }
+  }
+
+  // 닫은 알림 필터링
+  const visible = alerts.filter(a => !dismissedAlerts.includes(a.id));
+
+  if(!visible.length) { wrap.innerHTML=''; return; }
+
+  wrap.innerHTML = visible.map(a => `
+    <div class="alert-banner type-${a.type}" onclick="${''}">
+      <div class="alert-icon">${a.icon}</div>
+      <div class="alert-body">
+        <div class="alert-title type-${a.type}">${a.title}</div>
+        <div class="alert-desc type-${a.type}">${a.desc}</div>
+        <button class="alert-action type-${a.type}" onclick="handleAlertAction('${a.id}')">
+          ${a.action} →
+        </button>
+      </div>
+      <button class="alert-close" onclick="dismissAlert(event,'${a.id}')">✕</button>
+    </div>
+  `).join('');
+
+  // 클릭 핸들러 저장
+  window._alertHandlers = {};
+  visible.forEach(a => { window._alertHandlers[a.id] = a.onClick; });
+}
+
+window.handleAlertAction = function(id) {
+  if(window._alertHandlers && window._alertHandlers[id]) window._alertHandlers[id]();
+};
+
+window.dismissAlert = function(e, id) {
+  e.stopPropagation();
+  dismissedAlerts.push(id);
+  localStorage.setItem('dismissed_alerts', JSON.stringify(dismissedAlerts));
+  // 해당 배너만 애니메이션으로 제거
+  const banner = e.target.closest('.alert-banner');
+  if(banner){ banner.style.transition='all .2s'; banner.style.opacity='0'; banner.style.height='0'; banner.style.marginBottom='0'; banner.style.padding='0'; setTimeout(()=>banner.remove(), 200); }
+};
+
 function renderHome() {
+  renderAlerts();
   const el = document.getElementById('trip-list');
   // 일반회원: 공개된 출조만 / 운영자: 전체 표시
   const visible = TRIPS.filter(t => ME?.isAdmin || isOpen(t));
@@ -832,6 +991,14 @@ function renderDetail(id) {
   } else if(showLink) btnHtml=`<div class="chat-reveal">
     <div style="font-size:13px;font-weight:800;color:var(--fish);margin-bottom:10px;display:flex;align-items:center;justify-content:center;gap:5px"><i class="ti ti-brand-hipchat"></i> 오픈채팅방이 열렸습니다!</div>
     <button class="btn btn-kakao" onclick="openKakao('${t.kakaoLink||''}')"><i class="ti ti-brand-kakao" style="font-size:20px"></i> 카카오 오픈채팅 입장하기</button>
+    ${t.joinCode ? `
+    <div style="margin-top:12px;background:rgba(30,138,82,0.1);border:1.5px dashed var(--fish);border-radius:var(--radius-xs);padding:10px">
+      <div style="font-size:11px;color:var(--fish);font-weight:600;margin-bottom:4px">참여코드</div>
+      <div style="display:flex;align-items:center;justify-content:center;gap:8px">
+        <span style="font-size:20px;font-weight:900;color:var(--fish);letter-spacing:3px">${t.joinCode}</span>
+        <button onclick="copyCode('${t.joinCode}')" style="background:var(--fish);color:#fff;border:none;border-radius:6px;padding:5px 10px;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit">복사</button>
+      </div>
+    </div>` : ''}
     <p style="font-size:11px;color:var(--fish);opacity:.75;margin-top:8px">버튼을 눌러 출조 채팅방에 바로 입장하세요</p></div>`;
   else if(mine) btnHtml=`<button class="btn btn-success" style="margin-bottom:14px"><i class="ti ti-check"></i> 신청 완료 — 마감 후 채팅링크 공개</button>`;
   else if(full) btnHtml=`<button class="btn btn-disabled" disabled style="margin-bottom:14px">${t.closed||isFull(t)?'정원이 마감되었습니다':'모집 기간이 종료되었습니다'}</button>`;
@@ -931,6 +1098,10 @@ window.applyTrip = async function(id) {
 };
 
 window.openKakao=function(url){if(url&&url.startsWith('http'))window.open(url,'_blank');else showToast('카카오 오픈채팅 링크를 확인해주세요');};
+window.copyCode=function(code){
+  if(navigator.clipboard){navigator.clipboard.writeText(code).then(()=>showToast('✅ 참여코드가 복사되었습니다'));}
+  else{const el=document.createElement('textarea');el.value=code;document.body.appendChild(el);el.select();document.execCommand('copy');document.body.removeChild(el);showToast('✅ 참여코드가 복사되었습니다');}
+};
 
 /* ── 내 일정 (달력 + 한줄 카드) ────────────────── */
 function renderMyTrips() {
@@ -1159,7 +1330,9 @@ function renderAdmin(){
         ${!isPastTab&&!isPendingTab?`
         <div class="kakao-link-block">
           <div style="font-size:11px;font-weight:700;color:#7A4F00;margin-bottom:6px;display:flex;align-items:center;gap:4px"><i class="ti ti-brand-kakao" style="font-size:14px"></i> 오픈채팅 링크 ${full?'<span style="font-weight:400">(신청자에게 공개됨)</span>':'<span style="font-weight:400">(마감 후 자동 공개)</span>'}</div>
-          <input class="kakao-link-input" value="${t.kakaoLink||''}" placeholder="https://open.kakao.com/o/..." onblur="updateKakaoLink('${t.id}',this.value)">
+          <input class="kakao-link-input" value="${t.kakaoLink||''}" placeholder="https://open.kakao.com/o/..." onblur="updateKakaoLink('${t.id}',this.value)" style="margin-bottom:6px">
+          <div style="font-size:11px;font-weight:700;color:#7A4F00;margin-bottom:5px;display:flex;align-items:center;gap:4px;margin-top:6px">🔑 참여코드 <span style="font-weight:400">(없으면 비워두세요)</span></div>
+          <input class="kakao-link-input" value="${t.joinCode||''}" placeholder="예) FISH2024" onblur="updateJoinCode('${t.id}',this.value)">
         </div>
         <button class="btn btn-outline" style="font-size:13px;padding:9px;border:.5px solid var(--border);margin-bottom:8px" onclick="openAddMemberModal('${t.id}')">
           <i class="ti ti-user-plus"></i> 출조 대상자 직접 등록
@@ -1183,6 +1356,7 @@ window.openNow = async function(id, e) {
 
 window.closeTrip=async function(id,e){if(e)e.stopPropagation();try{await updateDoc(doc(db,'trips',id),{closed:true});showToast('✅ 마감 완료 — 신청자에게 채팅링크 공개됨');}catch(err){showToast('⚠️ 오류 발생');console.error(err);}};
 window.updateKakaoLink=async function(id,val){try{await updateDoc(doc(db,'trips',id),{kakaoLink:val});}catch(err){console.error(err);}};
+window.updateJoinCode=async function(id,val){try{await updateDoc(doc(db,'trips',id),{joinCode:val});}catch(err){console.error(err);}};
 window.deleteTrip=async function(id,e){if(e)e.stopPropagation();if(!confirm('이 출조를 삭제하시겠습니까?\n신청자 정보도 모두 삭제됩니다.'))return;try{await deleteDoc(doc(db,'trips',id));showToast('🗑️ 출조가 삭제되었습니다');}catch(err){showToast('⚠️ 삭제 중 오류 발생');console.error(err);}};
 
 /* ── 운영자: 출조 대상자 직접 등록 ───────────────── */
@@ -1251,7 +1425,7 @@ window.confirmAddMember = async function() {
 window.openNewModal=function(){
   document.getElementById('f-editing-id').value='';
   document.getElementById('trip-modal-title').innerHTML='<i class="ti ti-fish"></i> 새 출조 등록';
-  ['f-title','f-location','f-kakao','f-note'].forEach(id=>document.getElementById(id).value='');
+  ['f-title','f-location','f-kakao','f-joincode','f-note'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('f-date').value='';document.getElementById('f-time').value='05:00';
   document.getElementById('f-capacity').value='10';document.getElementById('f-cost').value='80000';
   document.getElementById('f-deadline').value='';
@@ -1266,7 +1440,7 @@ window.openEditModal=function(id,e){
   document.getElementById('f-title').value=t.title||'';document.getElementById('f-date').value=t.date||'';
   document.getElementById('f-time').value=t.time||'05:00';document.getElementById('f-location').value=t.location||'';
   document.getElementById('f-capacity').value=t.capacity||10;document.getElementById('f-cost').value=t.cost||0;
-  document.getElementById('f-deadline').value=t.deadline||'';document.getElementById('f-kakao').value=t.kakaoLink||'';
+  document.getElementById('f-deadline').value=t.deadline||'';document.getElementById('f-kakao').value=t.kakaoLink||'';document.getElementById('f-joincode').value=t.joinCode||'';
   document.getElementById('f-note').value=t.note||'';
   // 공개 일시 복원
   if(t.openAt){ const d=new Date(t.openAt); document.getElementById('f-opendate').value=d.toISOString().split('T')[0]; document.getElementById('f-opentime').value=d.toTimeString().slice(0,5); }
@@ -1290,6 +1464,7 @@ window.submitNewTrip=async function(){
     cost:parseInt(document.getElementById('f-cost').value)||0,
     deadline:document.getElementById('f-deadline').value,
     kakaoLink:document.getElementById('f-kakao').value.trim(),
+    joinCode:document.getElementById('f-joincode').value.trim(),
     note:document.getElementById('f-note').value.trim(),
     openAt};
   try{
