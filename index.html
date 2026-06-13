@@ -210,6 +210,25 @@ textarea.form-input{resize:vertical;min-height:110px;line-height:1.6}
 .tab-bar{display:flex;background:var(--card);border-radius:var(--radius-sm);border:.5px solid var(--border);padding:4px;margin-bottom:14px;gap:4px}
 .tab-btn2{flex:1;padding:8px;border:none;border-radius:8px;font-size:13px;font-weight:700;font-family:inherit;cursor:pointer;transition:all .2s;background:transparent;color:var(--text-hint)}
 .tab-btn2.on{background:var(--ocean);color:#fff}
+/* 🔔 Push 알림 */
+.notif-badge{position:relative}
+.notif-badge::after{content:'';position:absolute;top:6px;right:6px;width:8px;height:8px;border-radius:50%;background:var(--sand);border:2px solid var(--ocean);display:none}
+.notif-badge.has-dot::after{display:block}
+.push-banner{background:var(--ocean-light);border:1px solid rgba(11,79,108,.2);border-radius:var(--radius-sm);padding:13px 14px;margin-bottom:10px;display:flex;align-items:center;gap:12px;cursor:pointer;transition:transform .15s;animation:slideDown .3s ease}
+.push-banner:active{transform:scale(.98)}
+.push-banner-icon{font-size:26px;flex-shrink:0}
+.push-banner-body{flex:1;min-width:0}
+.push-banner-title{font-size:13px;font-weight:700;color:var(--ocean);margin-bottom:3px}
+.push-banner-desc{font-size:11px;color:var(--ocean);opacity:.7;line-height:1.45}
+.push-banner-btn{background:var(--ocean);color:#fff;border:none;border-radius:20px;font-size:11px;font-weight:700;font-family:inherit;padding:5px 12px;cursor:pointer;flex-shrink:0}
+.notif-row{display:flex;align-items:center;justify-content:space-between;padding:13px 14px;border-bottom:.5px solid var(--border)}
+.notif-row:last-child{border-bottom:none}
+.notif-toggle{position:relative;width:44px;height:26px;flex-shrink:0}
+.notif-toggle input{opacity:0;width:0;height:0;position:absolute}
+.notif-slider{position:absolute;inset:0;background:rgba(0,0,0,.15);border-radius:13px;cursor:pointer;transition:background .2s}
+.notif-toggle input:checked + .notif-slider{background:var(--ocean)}
+.notif-slider::before{content:'';position:absolute;width:20px;height:20px;left:3px;top:3px;background:#fff;border-radius:50%;transition:transform .2s;box-shadow:0 1px 3px rgba(0,0,0,.2)}
+.notif-toggle input:checked + .notif-slider::before{transform:translateX(18px)}
 </style>
 </head>
 <body>
@@ -223,7 +242,7 @@ textarea.form-input{resize:vertical;min-height:110px;line-height:1.6}
 <div class="app">
   <div class="topbar">
     <div class="topbar-logo"><span>🎣</span> 출조마당<span class="sync-dot" id="sync-dot"></span></div>
-    <button class="topbar-icon-btn" onclick="showToast('🔔 새 알림이 없습니다')"><i class="ti ti-bell"></i></button>
+    <button class="topbar-icon-btn notif-badge" id="topbar-bell" onclick="onBellClick()"><i class="ti ti-bell"></i></button>
   </div>
 
   <div class="scroll-area">
@@ -392,6 +411,13 @@ textarea.form-input{resize:vertical;min-height:110px;line-height:1.6}
       </div>
       <div class="profile-section">
         <div class="divider-label">계정 설정</div>
+        <div class="profile-row" onclick="openPushSettings()" style="cursor:pointer">
+          <span class="profile-row-label"><i class="ti ti-bell"></i> 푸시 알림 설정</span>
+          <div style="display:flex;align-items:center;gap:6px">
+            <span style="font-size:12px;color:var(--text-hint)" id="push-status-text">-</span>
+            <i class="ti ti-chevron-right" style="color:var(--text-hint)"></i>
+          </div>
+        </div>
         <div class="profile-row" onclick="openEditProfile()" style="cursor:pointer">
           <span class="profile-row-label"><i class="ti ti-user-edit"></i> 프로필 수정</span>
           <i class="ti ti-chevron-right" style="color:var(--text-hint)"></i>
@@ -513,6 +539,80 @@ textarea.form-input{resize:vertical;min-height:110px;line-height:1.6}
 
 <div class="toast" id="toast"></div>
 
+<!-- 🔔 푸시 알림 설정 모달 -->
+<div class="modal-overlay" id="push-modal">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title"><i class="ti ti-bell"></i> 푸시 알림 설정</div>
+
+    <!-- 권한 요청 배너 (미허용 상태에서만 표시) -->
+    <div id="push-request-banner" style="display:none;background:var(--ocean-light);border:1px solid rgba(11,79,108,.2);border-radius:var(--radius-sm);padding:14px;margin-bottom:16px;text-align:center">
+      <div style="font-size:28px;margin-bottom:8px">🔔</div>
+      <div style="font-size:13px;font-weight:700;color:var(--ocean);margin-bottom:4px">알림 수신 허용이 필요합니다</div>
+      <div style="font-size:11px;color:var(--ocean);opacity:.7;margin-bottom:12px;line-height:1.5">아래 버튼을 눌러 브라우저 알림을<br>허용하면 출조 소식을 즉시 받을 수 있습니다</div>
+      <button class="btn btn-primary" style="width:auto;padding:10px 24px;font-size:13px" onclick="requestPushPermission()">
+        <i class="ti ti-bell-ringing"></i> 알림 허용하기
+      </button>
+    </div>
+
+    <!-- iOS PWA 안내 (iOS Safari에서 표시) -->
+    <div id="push-ios-guide" style="display:none;background:var(--sand-light);border:1px solid rgba(245,166,35,.3);border-radius:var(--radius-sm);padding:14px;margin-bottom:16px">
+      <div style="font-size:12px;font-weight:700;color:#7A4F00;margin-bottom:6px">📱 iPhone 사용자 안내</div>
+      <div style="font-size:11px;color:#A07020;line-height:1.6">
+        iOS에서 푸시 알림을 받으려면<br>
+        Safari → <b>공유 버튼 <i class="ti ti-share" style="font-size:11px"></i></b> → <b>홈 화면에 추가</b><br>
+        를 먼저 해주세요 (iOS 16.4 이상)
+      </div>
+    </div>
+
+    <!-- 현재 상태 -->
+    <div style="background:var(--bg);border-radius:var(--radius-xs);padding:11px 13px;margin-bottom:14px;display:flex;align-items:center;gap:10px">
+      <i class="ti ti-wifi" style="font-size:20px;color:var(--ocean-mid)"></i>
+      <div style="flex:1">
+        <div style="font-size:12px;font-weight:700;color:var(--text-sub)">현재 알림 상태</div>
+        <div style="font-size:13px;font-weight:700" id="push-current-status">확인 중...</div>
+      </div>
+    </div>
+
+    <!-- 알림 항목 토글 -->
+    <div style="background:var(--card);border-radius:var(--radius-sm);border:.5px solid var(--border);overflow:hidden;margin-bottom:16px">
+      <div class="notif-row">
+        <div>
+          <div style="font-size:13px;font-weight:700;margin-bottom:2px">🎣 새 출조 등록</div>
+          <div style="font-size:11px;color:var(--text-hint)">운영자가 출조를 새로 등록했을 때</div>
+        </div>
+        <label class="notif-toggle"><input type="checkbox" id="nt-newtrip" onchange="saveNotifPref()"><span class="notif-slider"></span></label>
+      </div>
+      <div class="notif-row">
+        <div>
+          <div style="font-size:13px;font-weight:700;margin-bottom:2px">⏰ 마감 임박 알림</div>
+          <div style="font-size:11px;color:var(--text-hint)">신청 마감 1일 전 오전 8시</div>
+        </div>
+        <label class="notif-toggle"><input type="checkbox" id="nt-deadline" onchange="saveNotifPref()"><span class="notif-slider"></span></label>
+      </div>
+      <div class="notif-row">
+        <div>
+          <div style="font-size:13px;font-weight:700;margin-bottom:2px">✅ 신청 확정 알림</div>
+          <div style="font-size:11px;color:var(--text-hint)">내가 신청한 출조가 확정되었을 때</div>
+        </div>
+        <label class="notif-toggle"><input type="checkbox" id="nt-confirm" onchange="saveNotifPref()"><span class="notif-slider"></span></label>
+      </div>
+      <div class="notif-row">
+        <div>
+          <div style="font-size:13px;font-weight:700;margin-bottom:2px">💰 미납 입금 알림</div>
+          <div style="font-size:11px;color:var(--text-hint)">참가비 미납 상태 리마인더</div>
+        </div>
+        <label class="notif-toggle"><input type="checkbox" id="nt-payment" onchange="saveNotifPref()"><span class="notif-slider"></span></label>
+      </div>
+    </div>
+
+    <div style="display:flex;gap:10px">
+      <button class="btn btn-primary" style="flex:1" onclick="closeModal('push-modal')"><i class="ti ti-check"></i> 저장</button>
+      <button class="btn btn-outline" style="flex:0 0 72px;border:.5px solid var(--border)" onclick="closeModal('push-modal')">닫기</button>
+    </div>
+  </div>
+</div>
+
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import {
@@ -520,6 +620,7 @@ import {
   addDoc, updateDoc, deleteDoc, getDoc, setDoc,
   onSnapshot, query, orderBy, where, serverTimestamp, getDocs
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import { getMessaging, getToken, onMessage } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-messaging.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyAxyLn2wNlxXqJ3IzjuCR7_c54JMufjXHU",
@@ -532,6 +633,12 @@ const firebaseConfig = {
 
 const fbApp = initializeApp(firebaseConfig);
 const db = getFirestore(fbApp);
+
+// FCM VAPID 공개키 (Firebase Console → 프로젝트 설정 → 클라우드 메시징 → 웹 푸시 인증서에서 발급)
+const VAPID_KEY = 'BBVUc_Xx4DewxGCKyHxoLg4-rea2ia3e-JZhVgyiopWhgw6obLLFEYb3RRvOfvWCcMsusJHR45S5OCOHeLHX4Y8'; // ← Firebase Console에서 발급 후 교체
+
+let messaging = null;
+try { messaging = getMessaging(fbApp); } catch(e) { console.warn('FCM 초기화 불가:', e.message); }
 
 /* ── State ─────────────────────────────────── */
 let ME = null;
@@ -689,6 +796,7 @@ function afterLogin() {
   if (ME.isAdmin) document.getElementById('admin-nav-btn').style.display = 'flex';
   document.getElementById('bottomnav').style.display = 'flex';
   startSync();
+  initPush(); // 🔔 FCM 초기화
   switchPage('home', document.querySelector('.nav-btn[data-page="home"]'));
 }
 
@@ -1506,10 +1614,175 @@ window.saveProfile = async function() {
 /* ── Toast ───────────────────────────────────── */
 window.showToast=function(msg){const el=document.getElementById('toast');el.textContent=msg;el.classList.add('show');setTimeout(()=>el.classList.remove('show'),2600);};
 
+/* ── 🔔 FCM 푸시 알림 ────────────────────────── */
+
+// iOS Safari 감지
+function isIosSafari() {
+  return /iP(hone|ad|od)/.test(navigator.userAgent) && !window.MSStream;
+}
+// PWA(홈 화면 추가) 여부
+function isPwa() {
+  return window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
+}
+
+// 알림 권한 상태 → 한국어
+function permissionLabel(p) {
+  return p === 'granted' ? '✅ 허용됨' : p === 'denied' ? '❌ 차단됨 (브라우저 설정에서 해제)' : '⚠️ 미설정 (탭하여 허용)';
+}
+
+// 알림 설정 모달 열기
+window.openPushSettings = function() {
+  const perm = Notification.permission;
+  const statusEl = document.getElementById('push-current-status');
+  statusEl.textContent = permissionLabel(perm);
+  statusEl.style.color = perm === 'granted' ? 'var(--fish)' : perm === 'denied' ? 'var(--danger)' : 'var(--sand)';
+
+  // 배너/가이드 표시 조건
+  document.getElementById('push-request-banner').style.display = perm === 'granted' ? 'none' : 'block';
+  document.getElementById('push-ios-guide').style.display = (isIosSafari() && !isPwa()) ? 'block' : 'none';
+
+  // 저장된 토글 상태 복원
+  const prefs = JSON.parse(localStorage.getItem('notif_prefs') || '{}');
+  ['newtrip','deadline','confirm','payment'].forEach(k => {
+    const el = document.getElementById('nt-' + k);
+    if (el) el.checked = prefs[k] !== false; // 기본값 true
+  });
+
+  document.getElementById('push-modal').classList.add('open');
+};
+
+// 알림 허용 요청
+window.requestPushPermission = async function() {
+  if (!messaging) { showToast('⚠️ 이 브라우저는 푸시 알림을 지원하지 않습니다'); return; }
+  try {
+    const perm = await Notification.requestPermission();
+    if (perm === 'granted') {
+      await registerFcmToken();
+      document.getElementById('push-request-banner').style.display = 'none';
+      document.getElementById('push-current-status').textContent = permissionLabel('granted');
+      document.getElementById('push-current-status').style.color = 'var(--fish)';
+      updatePushStatusText();
+      showToast('✅ 알림이 허용되었습니다');
+    } else {
+      showToast('⚠️ 알림이 차단되었습니다. 브라우저 설정에서 허용해주세요');
+    }
+  } catch(e) { console.error('알림 권한 오류:', e); showToast('⚠️ 알림 권한 요청 중 오류 발생'); }
+};
+
+// FCM 토큰 등록 → Firestore users/{kakao}/fcmTokens
+async function registerFcmToken() {
+  if (!messaging || !ME) return;
+  try {
+    // Service Worker 등록 확인
+    if (!('serviceWorker' in navigator)) { console.warn('SW 미지원 브라우저'); return; }
+    const reg = await navigator.serviceWorker.getRegistration('/chuljo/');
+    if (!reg) { console.warn('SW 미등록. firebase-messaging-sw.js 배포 필요'); return; }
+
+    const token = await getToken(messaging, { vapidKey: VAPID_KEY, serviceWorkerRegistration: reg });
+    if (!token) return;
+
+    // Firestore에 토큰 저장 (중복 방지: 토큰을 문서 ID로 사용)
+    const tokenDoc = doc(db, 'users', ME.kakao, 'fcmTokens', token);
+    await setDoc(tokenDoc, {
+      token,
+      device: navigator.userAgent.substring(0, 100),
+      updatedAt: serverTimestamp()
+    }, { merge: true });
+
+    localStorage.setItem('fcm_token', token);
+    console.log('FCM 토큰 등록 완료:', token.substring(0, 20) + '...');
+  } catch(e) { console.error('FCM 토큰 등록 오류:', e); }
+}
+
+// 알림 개별 토글 저장
+window.saveNotifPref = function() {
+  const prefs = {};
+  ['newtrip','deadline','confirm','payment'].forEach(k => {
+    prefs[k] = document.getElementById('nt-' + k)?.checked ?? true;
+  });
+  localStorage.setItem('notif_prefs', JSON.stringify(prefs));
+  // Firestore에도 동기화
+  if (ME) {
+    updateDoc(doc(db, 'users', ME.kakao), { notifPrefs: prefs }).catch(()=>{});
+  }
+};
+
+// 포그라운드 메시지 수신 처리
+function initForegroundMessages() {
+  if (!messaging) return;
+  onMessage(messaging, payload => {
+    const { title = '출조마당', body = '' } = payload.notification || {};
+    showPushBanner(title, body, payload.data);
+    // 상단 벨 뱃지 표시
+    document.getElementById('topbar-bell')?.classList.add('has-dot');
+  });
+}
+
+// 인앱 푸시 배너 (포그라운드 수신 시)
+function showPushBanner(title, body, data = {}) {
+  const wrap = document.getElementById('alert-banner-wrap');
+  if (!wrap) return;
+  const id = 'pb-' + Date.now();
+  const div = document.createElement('div');
+  div.id = id;
+  div.className = 'push-banner';
+  div.innerHTML = `<div class="push-banner-icon">🔔</div>
+    <div class="push-banner-body">
+      <div class="push-banner-title">${title}</div>
+      <div class="push-banner-desc">${body}</div>
+    </div>
+    <button class="push-banner-btn" onclick="document.getElementById('${id}').remove()">닫기</button>`;
+  wrap.prepend(div);
+  setTimeout(() => { const el = document.getElementById(id); if(el) el.remove(); }, 8000);
+}
+
+// topbar 벨 클릭
+window.onBellClick = function() {
+  document.getElementById('topbar-bell')?.classList.remove('has-dot');
+  openPushSettings();
+};
+
+// 프로필 탭 알림 상태 텍스트 갱신
+function updatePushStatusText() {
+  const el = document.getElementById('push-status-text');
+  if (!el) return;
+  const perm = Notification.permission;
+  el.textContent = perm === 'granted' ? '허용됨' : perm === 'denied' ? '차단됨' : '미설정';
+  el.style.color = perm === 'granted' ? 'var(--fish)' : 'var(--danger)';
+}
+
+// afterLogin 이후 FCM 초기화
+async function initPush() {
+  if (!('Notification' in window)) return;
+  updatePushStatusText();
+  if (Notification.permission === 'granted') {
+    await registerFcmToken();
+    initForegroundMessages();
+  }
+  // 홈 화면에 추가 유도 배너 (iOS, 미설정 상태, 처음 방문)
+  if (isIosSafari() && !isPwa() && !localStorage.getItem('ios_banner_shown')) {
+    setTimeout(() => {
+      const wrap = document.getElementById('alert-banner-wrap');
+      if (!wrap) return;
+      const d = document.createElement('div');
+      d.id = 'ios-pwa-banner';
+      d.className = 'push-banner';
+      d.innerHTML = `<div class="push-banner-icon">📱</div>
+        <div class="push-banner-body">
+          <div class="push-banner-title">알림 받으려면 홈 화면에 추가하세요</div>
+          <div class="push-banner-desc">Safari → 공유 → 홈 화면에 추가 (iOS 16.4+)</div>
+        </div>
+        <button class="push-banner-btn" onclick="document.getElementById('ios-pwa-banner').remove();localStorage.setItem('ios_banner_shown','1')">확인</button>`;
+      wrap.prepend(d);
+      localStorage.setItem('ios_banner_shown', '1');
+    }, 3000);
+  }
+}
+
 /* ── Modal outside click ─────────────────────── */
 // 새 출조 등록 모달은 실수로 닫히지 않도록 외부 클릭 비활성화
 // 회원 등록, 프로필 수정 모달만 외부 클릭 시 닫힘
-['add-member-modal','edit-profile-modal'].forEach(id=>{
+['add-member-modal','edit-profile-modal','push-modal'].forEach(id=>{
   document.getElementById(id).addEventListener('click',function(e){if(e.target===this)closeModal(id);});
 });
 </script>
