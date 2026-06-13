@@ -1632,6 +1632,12 @@ function permissionLabel(p) {
 
 // 알림 설정 모달 열기
 window.openPushSettings = function() {
+  // 카카오 인앱 브라우저면 외부 브라우저 안내만 표시
+  if (isKakaoWebView()) {
+    showKakaoBrowserBanner();
+    showToast('카카오톡 브라우저에서는 알림을 설정할 수 없어요');
+    return;
+  }
   const perm = Notification.permission;
   const statusEl = document.getElementById('push-current-status');
   statusEl.textContent = permissionLabel(perm);
@@ -1752,7 +1758,17 @@ function updatePushStatusText() {
 }
 
 // afterLogin 이후 FCM 초기화
+// 카카오 인앱 브라우저 감지
+function isKakaoWebView() {
+  return /KAKAOTALK/i.test(navigator.userAgent);
+}
+
 async function initPush() {
+  // 카카오 인앱 브라우저 → 외부 브라우저 유도 배너만 표시하고 종료
+  if (isKakaoWebView()) {
+    setTimeout(() => showKakaoBrowserBanner(), 1500);
+    return;
+  }
   if (!('Notification' in window)) return;
   updatePushStatusText();
   if (Notification.permission === 'granted') {
@@ -1777,6 +1793,56 @@ async function initPush() {
       localStorage.setItem('ios_banner_shown', '1');
     }, 3000);
   }
+}
+
+// 카카오 인앱 브라우저 → 외부 브라우저 유도 배너
+function showKakaoBrowserBanner() {
+  if (localStorage.getItem('kakao_banner_dismissed')) return;
+  const wrap = document.getElementById('alert-banner-wrap');
+  if (!wrap) return;
+  const isAndroid = /Android/i.test(navigator.userAgent);
+  const currentUrl = location.href;
+
+  // Android: intent 스킴으로 Chrome 강제 오픈
+  // iOS: 직접 Safari로 오픈 유도 (intent 미지원)
+  const openInBrowser = isAndroid
+    ? `location.href='intent://${currentUrl.replace(/^https?:\/\//,'')}#Intent;scheme=https;package=com.android.chrome;end'`
+    : `location.href='${currentUrl}'`; // iOS는 우측 상단 … → 브라우저로 열기 안내
+
+  const d = document.createElement('div');
+  d.id = 'kakao-browser-banner';
+  d.style.cssText = `
+    background:#FEE500;border:1px solid rgba(0,0,0,.12);
+    border-radius:var(--radius-sm);padding:13px 14px;
+    margin-bottom:10px;display:flex;align-items:center;gap:12px;
+    animation:slideDown .3s ease;
+  `;
+  d.innerHTML = `
+    <div style="font-size:26px;flex-shrink:0">🌐</div>
+    <div style="flex:1;min-width:0">
+      <div style="font-size:13px;font-weight:700;color:#3A1D1D;margin-bottom:3px">
+        푸시 알림은 외부 브라우저에서만 동작해요
+      </div>
+      <div style="font-size:11px;color:#5A3A1D;line-height:1.5">
+        ${isAndroid
+          ? '아래 버튼을 눌러 Chrome으로 열어주세요'
+          : '우측 하단 <b>···</b> → <b>기본 브라우저로 열기</b> 를 눌러주세요'}
+      </div>
+      ${isAndroid ? `
+        <button onclick="${openInBrowser}"
+          style="margin-top:7px;background:#3A1D1D;color:#FEE500;border:none;
+                 border-radius:20px;font-size:11px;font-weight:700;
+                 font-family:inherit;padding:5px 14px;cursor:pointer">
+          Chrome으로 열기
+        </button>` : ''}
+    </div>
+    <button onclick="document.getElementById('kakao-browser-banner').remove();localStorage.setItem('kakao_banner_dismissed','1')"
+      style="background:rgba(0,0,0,.1);border:none;border-radius:50%;
+             width:22px;height:22px;cursor:pointer;font-size:13px;
+             flex-shrink:0;display:flex;align-items:center;justify-content:center;
+             color:#3A1D1D">✕</button>
+  `;
+  wrap.prepend(d);
 }
 
 /* ── Modal outside click ─────────────────────── */
