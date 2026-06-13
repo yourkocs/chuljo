@@ -411,7 +411,7 @@ textarea.form-input{resize:vertical;min-height:110px;line-height:1.6}
       </div>
       <div class="profile-section">
         <div class="divider-label">계정 설정</div>
-        <div class="profile-row" onclick="openPushSettings()" style="cursor:pointer">
+        <div class="profile-row" id="push-settings-row" style="cursor:pointer">
           <span class="profile-row-label"><i class="ti ti-bell"></i> 푸시 알림 설정</span>
           <div style="display:flex;align-items:center;gap:6px">
             <span style="font-size:12px;color:var(--text-hint)" id="push-status-text">-</span>
@@ -1784,6 +1784,15 @@ async function initPush() {
 // 회원 등록, 프로필 수정 모달만 외부 클릭 시 닫힘
 ['add-member-modal','edit-profile-modal','push-modal'].forEach(id=>{
   document.getElementById(id).addEventListener('click',function(e){if(e.target===this)closeModal(id);});
+});
+
+// 푸시 알림 설정 행 - 모바일 호환 이벤트 리스너
+document.getElementById('push-settings-row').addEventListener('click', function() {
+  openPushSettings();
+});
+document.getElementById('push-settings-row').addEventListener('touchend', function(e) {
+  e.preventDefault();
+  openPushSettings();
 });
 </script>
 </body>
