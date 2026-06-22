@@ -1020,6 +1020,22 @@ function renderAlerts() {
     });
   }
 
+  // ③-1 푸시 알림 미설정 유도 (카카오 인앱 브라우저 제외, 한 번 닫으면 7일간 숨김)
+  const pushDismissed = localStorage.getItem('push_noti_banner_dismissed');
+  const pushDismissedExpiry = pushDismissed ? parseInt(pushDismissed) : 0;
+  const pushNotGranted = !isKakaoWebView() && 'Notification' in window && Notification.permission !== 'granted';
+  if (pushNotGranted && Date.now() > pushDismissedExpiry) {
+    alerts.push({
+      id: 'push_setup',
+      type: 'new-trip',
+      icon: '🔔',
+      title: '출조 알림을 받아보세요!',
+      desc: '새 출조 등록·취소·입금 확인을 즉시 알림으로 받을 수 있습니다',
+      action: '알림 설정하기',
+      onClick: () => { openPushSettings(); }
+    });
+  }
+
   // ④ 공개 예정 출조 알림 (운영자만) — 오늘 공개 예정
   if(ME.isAdmin) {
     const pendingToday = TRIPS.filter(t => {
@@ -1073,9 +1089,13 @@ window.handleAlertAction = function(id) {
 
 window.dismissAlert = function(e, id) {
   e.stopPropagation();
-  dismissedAlerts.push(id);
-  localStorage.setItem('dismissed_alerts', JSON.stringify(dismissedAlerts));
-  // 해당 배너만 애니메이션으로 제거
+  // 푸시 알림 배너는 7일간 숨김
+  if (id === 'push_setup') {
+    localStorage.setItem('push_noti_banner_dismissed', String(Date.now() + 7*24*60*60*1000));
+  } else {
+    dismissedAlerts.push(id);
+    localStorage.setItem('dismissed_alerts', JSON.stringify(dismissedAlerts));
+  }
   const banner = e.target.closest('.alert-banner');
   if(banner){ banner.style.transition='all .2s'; banner.style.opacity='0'; banner.style.height='0'; banner.style.marginBottom='0'; banner.style.padding='0'; setTimeout(()=>banner.remove(), 200); }
 };
