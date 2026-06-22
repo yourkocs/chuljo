@@ -58,6 +58,11 @@ body{font-family:'Noto Sans KR',sans-serif;background:var(--bg);color:var(--text
 .status-badge{font-size:10px;font-weight:700;padding:3px 8px;border-radius:20px;white-space:nowrap}
 .b-open{background:rgba(255,255,255,.2);color:#fff}.b-warn{background:rgba(245,166,35,.3);color:#FFD87A}
 .b-closed{background:rgba(201,53,53,.3);color:#FF9E9E}.b-mine{background:rgba(30,138,82,.3);color:#7DFFBB}
+.b-done{background:rgba(30,138,82,.25);color:#7DFFBB}
+.b-cancelled{background:rgba(201,53,53,.25);color:#FF9E9E}
+.trip-card-result{padding:7px 14px;display:flex;align-items:center;gap:6px;border-top:.5px solid var(--border);font-size:12px;font-weight:700}
+.trip-card-result.done{background:rgba(30,138,82,.08);color:var(--fish)}
+.trip-card-result.cancelled{background:rgba(201,53,53,.08);color:#FF6B6B}
 .trip-card-body{padding:11px 14px 10px}
 .trip-meta{display:flex;flex-wrap:wrap;gap:10px}
 .meta-item{display:flex;align-items:center;gap:4px;font-size:12px;color:var(--text-sub)}
@@ -475,6 +480,20 @@ textarea.form-input{resize:vertical;min-height:110px;line-height:1.6}
       <label class="form-label">안내사항</label>
       <textarea class="form-input" id="f-note" placeholder="예) 낚시대 개인 지참&#10;미끼 현장 제공&#10;구명조끼 필수" rows="5" style="resize:vertical;min-height:110px;line-height:1.6"></textarea>
       <div class="form-hint">Enter로 줄바꿈 가능합니다</div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">특이사항 / 결과 메모 <span style="color:var(--text-hint);font-weight:400">(출조 후 기록용)</span></label>
+      <textarea class="form-input" id="f-result" placeholder="예) 광어 마릿수 저조&#10;날씨 악화로 조기 귀항&#10;인기 포인트: 서방파제 앞 20m" rows="4" style="resize:vertical;min-height:90px;line-height:1.6"></textarea>
+      <div class="form-hint">출조 완료 후 결과·특이사항을 기록하세요. 회원들에게는 표시되지 않습니다.</div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">출조 결과 상태 <span style="color:var(--text-hint);font-weight:400">(출조일 이후 설정)</span></label>
+      <select class="form-input" id="f-status">
+        <option value="">-- 미설정 (출조 전) --</option>
+        <option value="done">✅ 정상 완료</option>
+        <option value="cancelled">❌ 취소 — 기상악화</option>
+        <option value="cancelled_other">❌ 취소 — 기타사유</option>
+      </select>
     </div>
     <div style="display:flex;gap:10px;margin-top:4px">
       <button class="btn btn-primary" style="flex:1" onclick="submitNewTrip()"><i class="ti ti-check"></i> 저장하기</button>
@@ -1064,7 +1083,6 @@ window.dismissAlert = function(e, id) {
 function renderHome() {
   renderAlerts();
   const el = document.getElementById('trip-list');
-  // 일반회원: 공개된 출조만 / 운영자: 전체 표시
   const visible = TRIPS.filter(t => ME?.isAdmin || isOpen(t));
   if (!visible.length) { el.innerHTML='<div class="empty"><i class="ti ti-fish-off"></i><p>등록된 출조가 없습니다</p></div>'; return; }
   el.innerHTML = visible.map(t => {
@@ -1072,10 +1090,39 @@ function renderHome() {
     const mine=isMine(t);
     const notOpenYet = !isOpen(t);
     const countdown = openCountdown(t);
-    const bc=notOpenYet?'b-warn':t.closed||isFull(t)?'b-closed':mine?'b-mine':pct>=0.7?'b-warn':'b-open';
-    const bt=notOpenYet?'공개예정':t.closed?'마감됨':isFull(t)?'정원마감':mine?'신청완료':pct>=0.7?'마감임박':'모집중';
+    const past = isPast(t);
+
+    // 출조 결과 상태 (출조일 지난 경우)
+    const status = t.status || (past ? 'done' : null); // 기본값: 과거 출조는 '완료'
+    const statusBar = past && status ? `
+      <div class="trip-card-result ${status === 'done' ? 'done' : 'cancelled'}">
+        ${status === 'done'
+          ? '<i class="ti ti-circle-check"></i> 출조 완료'
+          : status === 'cancelled'
+            ? '<i class="ti ti-circle-x"></i> 취소 (기상악화)'
+            : status === 'cancelled_other'
+              ? '<i class="ti ti-circle-x"></i> 취소 (기타사유)'
+              : ''}
+        ${t.result ? `<span style="font-weight:400;color:var(--text-hint);font-size:11px;margin-left:4px">· ${t.result.substring(0,20)}${t.result.length>20?'...':''}</span>` : ''}
+      </div>` : '';
+
+    // 상태 배지
+    const bc = past
+      ? (status === 'done' ? 'b-done' : 'b-cancelled')
+      : notOpenYet ? 'b-warn'
+      : t.closed||isFull(t) ? 'b-closed'
+      : mine ? 'b-mine'
+      : pct>=0.7 ? 'b-warn' : 'b-open';
+    const bt = past
+      ? (status === 'done' ? '완료' : '취소')
+      : notOpenYet ? '공개예정'
+      : t.closed ? '마감됨'
+      : isFull(t) ? '정원마감'
+      : mine ? '신청완료'
+      : pct>=0.7 ? '마감임박' : '모집중';
+
     return `<div class="trip-card" onclick="goDetail('${t.id}')">
-      <div class="trip-card-top" style="${notOpenYet?'background:var(--text-sub)':''}">
+      <div class="trip-card-top" style="${notOpenYet?'background:var(--text-sub)':past&&status==='cancelled'?'background:#7A2A2A':past?'background:var(--ocean-mid)':''}">
         <div style="flex:1;min-width:0"><div class="trip-title">${t.title}</div>
         <div class="trip-date-row"><i class="ti ti-calendar" style="font-size:12px"></i>${fmtDate(t.date)} ${t.time||''} 출발</div></div>
         <div class="badges"><span class="dday">${dday(t.date)}</span><span class="status-badge ${bc}">${bt}</span></div>
@@ -1089,6 +1136,7 @@ function renderHome() {
         <div class="meta-item"><i class="ti ti-map-pin"></i>${t.location}</div>
         <div class="meta-item"><i class="ti ti-wallet"></i>${fmtCost(t.cost)}</div>
       </div></div>
+      ${statusBar}
       <div class="trip-card-foot">
         <span style="font-size:12px;font-weight:700;flex-shrink:0;color:${slotColor(pct)}">${(t.applicants||[]).length}/${t.capacity}명</span>
         <div class="slot-bar"><div class="slot-fill" style="width:${Math.min(pct*100,100)}%;background:${slotColor(pct)}"></div></div>
@@ -1155,7 +1203,9 @@ function renderDetail(id) {
   document.getElementById('detail-content').innerHTML=`
     <div class="detail-hero">
       <div class="back-row"><button class="back-btn" onclick="goBack()"><i class="ti ti-arrow-left"></i></button>
-      <span style="color:rgba(255,255,255,.7);font-size:13px">목록으로</span></div>
+      <span style="color:rgba(255,255,255,.7);font-size:13px">목록으로</span>
+      ${ME?.isAdmin ? `<button onclick="openEditModal('${t.id}',event)" style="margin-left:auto;background:rgba(255,255,255,.2);border:1px solid rgba(255,255,255,.4);color:#fff;border-radius:20px;font-size:12px;font-weight:700;padding:5px 13px;cursor:pointer;font-family:inherit"><i class="ti ti-edit"></i> 수정</button>` : ''}
+      </div>
       <div style="color:#fff;font-size:19px;font-weight:800;line-height:1.3;margin-bottom:5px">${t.title}</div>
       <div style="color:rgba(255,255,255,.75);font-size:12px;display:flex;align-items:center;gap:5px;flex-wrap:wrap">
         <i class="ti ti-calendar"></i>${fmtDate(t.date)} ${t.time||''} 출발 &nbsp;·&nbsp;<i class="ti ti-map-pin"></i>${t.location}</div>
@@ -1174,7 +1224,11 @@ function renderDetail(id) {
       <div class="prog-bar"><div class="prog-fill" style="width:${Math.min(pct*100,100)}%;background:${slotColor(pct)}"></div></div>
     </div>
     ${t.note?`<div style="background:var(--bg);border-radius:var(--radius-xs);padding:11px 13px;margin-bottom:14px;font-size:13px;color:var(--text-sub);border-left:3px solid var(--ocean-mid);white-space:pre-line">${t.note}</div>`:''}
-    ${btnHtml}
+    ${ME?.isAdmin && t.result ? `
+    <div style="background:var(--sand-light);border-radius:var(--radius-xs);padding:11px 13px;margin-bottom:14px;border-left:3px solid var(--sand)">
+      <div style="font-size:11px;font-weight:700;color:#7A4F00;margin-bottom:5px"><i class="ti ti-notes"></i> 특이사항 / 결과 메모</div>
+      <div style="font-size:13px;color:var(--text-sub);white-space:pre-line">${t.result}</div>
+    </div>` : ''}    ${btnHtml}
     <div class="applicants-section">
       <div class="applicants-header">
         <span>신청자 명단</span>
@@ -1551,7 +1605,8 @@ window.confirmAddMember = async function() {
 window.openNewModal=function(){
   document.getElementById('f-editing-id').value='';
   document.getElementById('trip-modal-title').innerHTML='<i class="ti ti-fish"></i> 새 출조 등록';
-  ['f-title','f-location','f-kakao','f-joincode','f-note'].forEach(id=>document.getElementById(id).value='');
+  ['f-title','f-location','f-kakao','f-joincode','f-note','f-result'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('f-status').value='';
   document.getElementById('f-date').value='';document.getElementById('f-time').value='05:00';
   document.getElementById('f-capacity').value='10';document.getElementById('f-cost').value='80000';
   document.getElementById('f-deadline').value='';
@@ -1568,6 +1623,8 @@ window.openEditModal=function(id,e){
   document.getElementById('f-capacity').value=t.capacity||10;document.getElementById('f-cost').value=t.cost||0;
   document.getElementById('f-deadline').value=t.deadline||'';document.getElementById('f-kakao').value=t.kakaoLink||'';document.getElementById('f-joincode').value=t.joinCode||'';
   document.getElementById('f-note').value=t.note||'';
+  document.getElementById('f-result').value=t.result||'';
+  document.getElementById('f-status').value=t.status||'';
   // 공개 일시 복원
   if(t.openAt){ const d=new Date(t.openAt); document.getElementById('f-opendate').value=d.toISOString().split('T')[0]; document.getElementById('f-opentime').value=d.toTimeString().slice(0,5); }
   else { document.getElementById('f-opendate').value=''; document.getElementById('f-opentime').value='20:00'; }
@@ -1592,6 +1649,8 @@ window.submitNewTrip=async function(){
     kakaoLink:document.getElementById('f-kakao').value.trim(),
     joinCode:document.getElementById('f-joincode').value.trim(),
     note:document.getElementById('f-note').value.trim(),
+    result:document.getElementById('f-result').value.trim(),
+    status:document.getElementById('f-status').value,
     openAt};
   try{
     if(editingId){await updateDoc(doc(db,'trips',editingId),data);showToast('✅ 출조가 수정되었습니다');}
