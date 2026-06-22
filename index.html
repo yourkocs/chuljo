@@ -621,6 +621,7 @@ import {
   onSnapshot, query, orderBy, where, serverTimestamp, getDocs
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 import { getMessaging, getToken, onMessage } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-messaging.js";
+import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyAxyLn2wNlxXqJ3IzjuCR7_c54JMufjXHU",
@@ -633,6 +634,7 @@ const firebaseConfig = {
 
 const fbApp = initializeApp(firebaseConfig);
 const db = getFirestore(fbApp);
+const auth = getAuth(fbApp);
 
 // FCM VAPID 공개키 (Firebase Console → 프로젝트 설정 → 클라우드 메시징 → 웹 푸시 인증서에서 발급)
 const VAPID_KEY = 'BBVUc_Xx4DewxGCKyHxoLg4-rea2ia3e-JZhVgyiopWhgw6obLLFEYb3RRvOfvWCcMsusJHR45S5OCOHeLHX4Y8'; // ← Firebase Console에서 발급 후 교체
@@ -795,8 +797,19 @@ function afterLogin() {
   if (warn) warn.style.display = ME.phone ? 'none' : 'flex';
   if (ME.isAdmin) document.getElementById('admin-nav-btn').style.display = 'flex';
   document.getElementById('bottomnav').style.display = 'flex';
-  startSync();
-  initPush(); // 🔔 FCM 초기화
+
+  // Firebase 익명 로그인 → Firestore 보안 규칙 통과
+  signInAnonymously(auth)
+    .then(() => {
+      startSync();
+      initPush();
+    })
+    .catch(e => {
+      console.warn('Firebase Auth 실패, 규칙 없이 진행:', e.message);
+      startSync();
+      initPush();
+    });
+
   switchPage('home', document.querySelector('.nav-btn[data-page="home"]'));
 }
 
@@ -833,7 +846,12 @@ function startSync() {
       if(currentPage==='home') renderAlerts();
       rerender();
     },
-    err => { dot.className = 'sync-dot off'; document.getElementById('db-status').textContent = '연결 오류'; console.error(err); }
+    err => { 
+      dot.className = 'sync-dot off'; 
+      const msg = err.code || err.message || '알 수 없는 오류';
+      document.getElementById('db-status').textContent = '연결 오류: ' + msg; 
+      console.error(err); 
+    }
   );
 
   // 회원 목록 구독 (운영자만)
