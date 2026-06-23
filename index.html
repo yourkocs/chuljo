@@ -632,6 +632,37 @@ textarea.form-input{resize:vertical;min-height:110px;line-height:1.6}
   </div>
 </div>
 
+<!-- 👥 신청자 직접 등록 모달 -->
+<div class="modal-overlay" id="add-applicant-modal">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title"><i class="ti ti-user-plus"></i> 신청자 직접 등록</div>
+
+    <!-- 검색창 -->
+    <div style="position:relative;margin-bottom:12px">
+      <i class="ti ti-search" style="position:absolute;left:11px;top:50%;transform:translateY(-50%);color:var(--text-hint);font-size:15px"></i>
+      <input class="form-input" id="add-applicant-search" placeholder="이름 또는 카카오ID 검색..." style="padding-left:34px" oninput="filterAddApplicantList()">
+    </div>
+
+    <!-- 전체 선택 -->
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 4px;margin-bottom:4px">
+      <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;font-weight:700">
+        <input type="checkbox" id="add-applicant-all" onchange="toggleAllApplicants(this.checked)">
+        전체 선택
+      </label>
+      <span id="add-applicant-count" style="font-size:12px;color:var(--ocean);font-weight:700">0명 선택</span>
+    </div>
+
+    <!-- 회원 목록 -->
+    <div id="add-applicant-list" style="max-height:280px;overflow-y:auto;border:.5px solid var(--border);border-radius:var(--radius-xs);margin-bottom:14px"></div>
+
+    <div style="display:flex;gap:10px">
+      <button class="btn btn-primary" style="flex:1" onclick="submitAddApplicants()"><i class="ti ti-check"></i> 등록</button>
+      <button class="btn btn-outline" style="flex:0 0 72px;border:.5px solid var(--border)" onclick="closeModal('add-applicant-modal')">취소</button>
+    </div>
+  </div>
+</div>
+
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import {
@@ -1255,6 +1286,7 @@ function renderDetail(id) {
         <div style="display:flex;align-items:center;gap:8px">
           ${ME?.isAdmin?`<span style="font-size:11px;color:var(--fish);font-weight:700">입금 ${paid_total}/${(t.applicants||[]).length}</span>`:''}
           <span style="font-size:13px;font-weight:800;color:var(--ocean)">${(t.applicants||[]).length}명</span>
+          ${ME?.isAdmin?`<button onclick="openAddApplicantModal('${id}')" style="background:var(--ocean);color:#fff;border:none;border-radius:20px;font-size:11px;font-weight:700;font-family:inherit;padding:4px 10px;cursor:pointer"><i class="ti ti-user-plus"></i> 등록</button>`:''}
         </div>
       </div>
       ${listHtml||'<div style="padding:16px;text-align:center;color:var(--text-hint);font-size:13px">아직 신청자가 없습니다</div>'}
@@ -1282,8 +1314,98 @@ window.removeApplicant = async function(tripId, idx) {
   const updated = (t.applicants||[]).filter((_,i)=>i!==idx);
   try {
     await updateDoc(doc(db,'trips',tripId), { applicants: updated });
-    showToast(`🗑️ ${name} 님이 명단에서 삭제되었습니다`);
-  } catch(e) { showToast('⚠️ 오류 발생'); console.error(e); }
+    showToast(`✅ ${name} 님이 삭제되었습니다`);
+  } catch(e) { showToast('⚠️ 삭제 중 오류 발생'); console.error(e); }
+};
+
+/* ── 신청자 직접 등록 모달 ───────────────────── */
+let _addApplicantTripId = null;
+
+window.openAddApplicantModal = function(tripId) {
+  _addApplicantTripId = tripId;
+  const t = TRIPS.find(x=>x.id===tripId);
+  const alreadyKakao = new Set((t?.applicants||[]).map(a=>a.kakao));
+
+  // 이미 신청한 회원 제외한 전체 회원 목록
+  const candidates = MEMBERS.filter(m => !alreadyKakao.has(m.kakao));
+  window._addApplicantCandidates = candidates;
+
+  document.getElementById('add-applicant-search').value = '';
+  document.getElementById('add-applicant-all').checked = false;
+  document.getElementById('add-applicant-count').textContent = '0명 선택';
+  renderAddApplicantList(candidates);
+  document.getElementById('add-applicant-modal').classList.add('open');
+};
+
+function renderAddApplicantList(members) {
+  const el = document.getElementById('add-applicant-list');
+  if (!members.length) {
+    el.innerHTML = '<div style="padding:16px;text-align:center;color:var(--text-hint);font-size:13px">등록 가능한 회원이 없습니다</div>';
+    return;
+  }
+  el.innerHTML = members.map(m => `
+    <label style="display:flex;align-items:center;gap:10px;padding:10px 12px;border-bottom:.5px solid var(--border);cursor:pointer" class="add-applicant-item">
+      <input type="checkbox" class="add-applicant-chk" data-kakao="${m.kakao}" data-name="${m.name}" data-phone="${m.phone||''}" onchange="updateAddApplicantCount()">
+      <div class="avatar" style="width:32px;height:32px;font-size:13px;flex-shrink:0">${m.name[0]}</div>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:13px;font-weight:700">${m.name}</div>
+        <div style="font-size:11px;color:var(--text-hint)">@${m.kakao} · ${m.phone||'-'}</div>
+      </div>
+    </label>`).join('');
+}
+
+window.filterAddApplicantList = function() {
+  const q = document.getElementById('add-applicant-search').value.trim().toLowerCase();
+  const filtered = (window._addApplicantCandidates||[]).filter(m =>
+    m.name.toLowerCase().includes(q) || m.kakao.toLowerCase().includes(q)
+  );
+  renderAddApplicantList(filtered);
+  document.getElementById('add-applicant-all').checked = false;
+  updateAddApplicantCount();
+};
+
+window.toggleAllApplicants = function(checked) {
+  document.querySelectorAll('.add-applicant-chk').forEach(chk => { chk.checked = checked; });
+  updateAddApplicantCount();
+};
+
+window.updateAddApplicantCount = function() {
+  const count = document.querySelectorAll('.add-applicant-chk:checked').length;
+  document.getElementById('add-applicant-count').textContent = count + '명 선택';
+  // 전체 선택 체크박스 상태 동기화
+  const total = document.querySelectorAll('.add-applicant-chk').length;
+  document.getElementById('add-applicant-all').checked = total > 0 && count === total;
+};
+
+window.submitAddApplicants = async function() {
+  const tripId = _addApplicantTripId;
+  const t = TRIPS.find(x=>x.id===tripId);
+  if (!t) return;
+
+  const checked = document.querySelectorAll('.add-applicant-chk:checked');
+  if (!checked.length) { showToast('⚠️ 등록할 회원을 선택해주세요'); return; }
+
+  const now = new Date().toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'});
+  const newApplicants = Array.from(checked).map(chk => ({
+    name: chk.dataset.name,
+    kakao: chk.dataset.kakao,
+    phone: chk.dataset.phone,
+    paid: false,
+    time: now
+  }));
+
+  // 정원 초과 체크
+  const currentCount = (t.applicants||[]).length;
+  if (currentCount + newApplicants.length > t.capacity) {
+    if (!confirm(`정원(${t.capacity}명)을 초과합니다. (현재 ${currentCount}명 + 추가 ${newApplicants.length}명)\n계속 등록하시겠습니까?`)) return;
+  }
+
+  try {
+    const updated = [...(t.applicants||[]), ...newApplicants];
+    await updateDoc(doc(db,'trips',tripId), { applicants: updated });
+    closeModal('add-applicant-modal');
+    showToast(`✅ ${newApplicants.length}명이 등록되었습니다`);
+  } catch(e) { showToast('⚠️ 등록 중 오류 발생'); console.error(e); }
 };
 
 window.applyTrip = async function(id) {
@@ -1945,7 +2067,7 @@ function showKakaoBrowserBanner() {
 /* ── Modal outside click ─────────────────────── */
 // 새 출조 등록 모달은 실수로 닫히지 않도록 외부 클릭 비활성화
 // 회원 등록, 프로필 수정 모달만 외부 클릭 시 닫힘
-['add-member-modal','edit-profile-modal','push-modal'].forEach(id=>{
+['add-member-modal','edit-profile-modal','push-modal','add-applicant-modal'].forEach(id=>{
   document.getElementById(id).addEventListener('click',function(e){if(e.target===this)closeModal(id);});
 });
 
