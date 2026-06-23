@@ -474,7 +474,7 @@ textarea.form-input{resize:vertical;min-height:110px;line-height:1.6}
       </div>
       <div class="form-hint">* 설정한 날짜/시간이 되어야 회원에게 출조가 공개됩니다</div>
     </div>
-    <div class="form-group"><label class="form-label">카카오 오픈채팅 링크</label><input class="form-input" id="f-kakao" placeholder="https://open.kakao.com/o/..."><div class="form-hint">* 마감 후 신청자에게만 공개됩니다</div></div>
+    <div class="form-group"><label class="form-label">카카오 오픈채팅 링크 <span style="color:var(--text-hint);font-weight:400">(선택)</span></label><input class="form-input" id="f-kakao" placeholder="https://open.kakao.com/o/..."><div class="form-hint">* 비워두면 기존 동호회 오픈채팅방을 이용합니다. 마감 후 신청자에게만 공개됩니다</div></div>
     <div class="form-group"><label class="form-label">참여코드 <span style="color:var(--text-hint);font-weight:400">(선택)</span></label><input class="form-input" id="f-joincode" placeholder="예) FISH2024"><div class="form-hint">* 오픈채팅방 참여코드가 있을 경우 입력하세요</div></div>
     <div class="form-group">
       <label class="form-label">안내사항</label>
@@ -509,23 +509,20 @@ textarea.form-input{resize:vertical;min-height:110px;line-height:1.6}
     <div class="modal-title"><i class="ti ti-user-plus"></i> 출조 대상자 등록</div>
     <input type="hidden" id="am-trip-id">
     <!-- 검색 -->
-    <div class="form-group">
-      <label class="form-label">카톡 아이디 검색</label>
-      <div style="display:flex;gap:8px">
-        <input class="form-input" id="am-search" placeholder="카톡 아이디 입력" style="flex:1">
-        <button class="btn btn-primary btn-sm" onclick="searchMember()" style="flex-shrink:0;width:auto;padding:0 14px">검색</button>
-      </div>
+    <div style="position:relative;margin-bottom:10px">
+      <i class="ti ti-search" style="position:absolute;left:11px;top:50%;transform:translateY(-50%);color:var(--text-hint);font-size:15px"></i>
+      <input class="form-input" id="am-search" placeholder="이름 또는 카톡 아이디 검색" style="padding-left:34px" oninput="searchMember()">
     </div>
-    <!-- 가입 회원 목록 -->
-    <div class="form-group">
-      <label class="form-label">또는 가입 회원 목록에서 선택</label>
-      <div class="member-select-list" id="member-select-list"></div>
+    <!-- 전체 선택 + 카운트 -->
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:6px 4px;margin-bottom:4px">
+      <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;font-weight:700">
+        <input type="checkbox" id="am-select-all" onchange="toggleAllMembers(this.checked)">
+        전체 선택
+      </label>
+      <span id="am-selected-count" style="font-size:12px;color:var(--ocean);font-weight:700">0명 선택</span>
     </div>
-    <!-- 선택된 회원 -->
-    <div id="am-selected-wrap" style="display:none;margin-bottom:14px">
-      <div style="font-size:12px;font-weight:700;color:var(--text-sub);margin-bottom:6px">선택된 회원</div>
-      <div id="am-selected-info" style="background:var(--ocean-light);border-radius:var(--radius-xs);padding:10px 12px;font-size:13px;color:var(--ocean);font-weight:600"></div>
-    </div>
+    <!-- 회원 목록 -->
+    <div class="member-select-list" id="member-select-list" style="max-height:280px;overflow-y:auto;margin-bottom:14px"></div>
     <div style="display:flex;gap:10px">
       <button class="btn btn-primary" style="flex:1" onclick="confirmAddMember()"><i class="ti ti-user-check"></i> 등록하기</button>
       <button class="btn btn-outline" style="flex:0 0 72px;border:.5px solid var(--border)" onclick="closeModal('add-member-modal')">취소</button>
@@ -701,7 +698,7 @@ let adminTab = 'active';
 let currentPage = 'login';
 let prevPage = 'home';
 let unsubTrips = null, unsubMembers = null;
-let amSelectedMember = null;
+let _addApplicantTripId = null;
 const ADMIN_CODE = 'fish2024';
 
 /* ── 초기화 ──────────────────────────────────── */
@@ -1019,7 +1016,7 @@ function renderAlerts() {
   const chatOpenTrips = TRIPS.filter(t => {
     const me = (t.applicants||[]).find(a=>a.kakao===ME.kakao);
     const full = t.closed||isFull(t)||isPastDeadline(t);
-    return me && full && t.kakaoLink && !isPast(t);
+    return me && full && !isPast(t);
   });
   if(chatOpenTrips.length > 0) {
     alerts.push({
@@ -1027,8 +1024,8 @@ function renderAlerts() {
       type: 'chat',
       icon: '💬',
       title: '채팅방이 열렸습니다!',
-      desc: chatOpenTrips.map(t=>t.title).join(', '),
-      action: '채팅방 입장',
+      desc: chatOpenTrips.map(t=>t.title).join(', ') + (chatOpenTrips[0].kakaoLink ? '' : ' (기존 동호회 채팅방 이용)'),
+      action: chatOpenTrips[0].kakaoLink ? '채팅방 입장' : '출조 확인하기',
       onClick: ()=>{ goDetail(chatOpenTrips[0].id); }
     });
   }
@@ -1215,7 +1212,10 @@ function renderDetail(id) {
     </div>`;
   } else if(showLink) btnHtml=`<div class="chat-reveal">
     <div style="font-size:13px;font-weight:800;color:var(--fish);margin-bottom:10px;display:flex;align-items:center;justify-content:center;gap:5px"><i class="ti ti-brand-hipchat"></i> 오픈채팅방이 열렸습니다!</div>
-    <button class="btn btn-kakao" onclick="openKakao('${t.kakaoLink||''}')"><i class="ti ti-brand-kakao" style="font-size:20px"></i> 카카오 오픈채팅 입장하기</button>
+    ${t.kakaoLink
+      ? `<button class="btn btn-kakao" onclick="openKakao('${t.kakaoLink||''}')"><i class="ti ti-brand-kakao" style="font-size:20px"></i> 카카오 오픈채팅 입장하기</button>`
+      : `<div style="background:var(--bg);border-radius:var(--radius-xs);padding:10px 13px;font-size:12px;color:var(--text-sub);text-align:center">기존 동호회 오픈채팅방을 이용해주세요</div>`
+    }
     ${t.joinCode ? `
     <div style="margin-top:12px;background:rgba(30,138,82,0.1);border:1.5px dashed var(--fish);border-radius:var(--radius-xs);padding:10px">
       <div style="font-size:11px;color:var(--fish);font-weight:600;margin-bottom:4px">참여코드</div>
@@ -1319,8 +1319,6 @@ window.removeApplicant = async function(tripId, idx) {
 };
 
 /* ── 신청자 직접 등록 모달 ───────────────────── */
-let _addApplicantTripId = null;
-
 window.openAddApplicantModal = function(tripId) {
   _addApplicantTripId = tripId;
   const t = TRIPS.find(x=>x.id===tripId);
@@ -1685,61 +1683,79 @@ window.deleteTrip=async function(id,e){if(e)e.stopPropagation();if(!confirm('이
 window.openAddMemberModal = function(tripId) {
   document.getElementById('am-trip-id').value = tripId;
   document.getElementById('am-search').value = '';
-  document.getElementById('am-selected-wrap').style.display = 'none';
-  amSelectedMember = null;
+  document.getElementById('am-select-all').checked = false;
+  document.getElementById('am-selected-count').textContent = '0명 선택';
   // 가입 회원 목록 렌더 (이미 신청한 사람 제외)
   const t = TRIPS.find(x=>x.id===tripId);
   const alreadyIn = (t?.applicants||[]).map(a=>a.kakao);
-  const el = document.getElementById('member-select-list');
   const avail = MEMBERS.filter(m=>!alreadyIn.includes(m.kakao));
-  if (!avail.length) { el.innerHTML='<div style="padding:12px;text-align:center;font-size:13px;color:var(--text-hint)">등록 가능한 회원이 없습니다</div>'; }
-  else { el.innerHTML = avail.map(m=>`
-    <div class="member-select-row" onclick="selectMember('${m.kakao}','${m.name}','${m.phone||''}')">
-      <div class="avatar" style="width:30px;height:30px;font-size:12px">${m.name[0]}</div>
-      <div style="flex:1"><div style="font-size:13px;font-weight:700">${m.name}</div>
-      <div style="font-size:11px;color:var(--text-hint)">@${m.kakao}</div></div>
-    </div>`).join(''); }
+  renderMemberSelectList(avail);
   document.getElementById('add-member-modal').classList.add('open');
 };
 
 window.searchMember = function() {
   const kw = document.getElementById('am-search').value.trim().toLowerCase();
-  if (!kw) { showToast('⚠️ 검색어를 입력해주세요'); return; }
   const tripId = document.getElementById('am-trip-id').value;
   const t = TRIPS.find(x=>x.id===tripId);
   const alreadyIn = (t?.applicants||[]).map(a=>a.kakao);
-  const found = MEMBERS.filter(m=>!alreadyIn.includes(m.kakao)&&(m.kakao.toLowerCase().includes(kw)||m.name.includes(kw)));
-  const el = document.getElementById('member-select-list');
-  if (!found.length) { el.innerHTML='<div style="padding:12px;text-align:center;font-size:13px;color:var(--text-hint)">검색 결과가 없습니다</div>'; return; }
-  el.innerHTML = found.map(m=>`
-    <div class="member-select-row" onclick="selectMember('${m.kakao}','${m.name}','${m.phone||''}')">
-      <div class="avatar" style="width:30px;height:30px;font-size:12px">${m.name[0]}</div>
-      <div style="flex:1"><div style="font-size:13px;font-weight:700">${m.name}</div>
-      <div style="font-size:11px;color:var(--text-hint)">@${m.kakao}</div></div>
-    </div>`).join('');
+  const avail = MEMBERS.filter(m => !alreadyIn.includes(m.kakao));
+  const filtered = kw
+    ? avail.filter(m => m.name.toLowerCase().includes(kw) || m.kakao.toLowerCase().includes(kw))
+    : avail;
+  renderMemberSelectList(filtered);
+  document.getElementById('am-select-all').checked = false;
+  updateAmCount();
 };
 
-window.selectMember = function(kakao, name, phone) {
-  amSelectedMember = { kakao, name, phone };
-  document.querySelectorAll('.member-select-row').forEach(r=>r.classList.remove('selected'));
-  event.currentTarget.classList.add('selected');
-  document.getElementById('am-selected-info').innerHTML=`<i class="ti ti-user-check"></i> ${name} (@${kakao})`;
-  document.getElementById('am-selected-wrap').style.display = 'block';
+function renderMemberSelectList(members) {
+  const el = document.getElementById('member-select-list');
+  if (!members.length) {
+    el.innerHTML = '<div style="padding:14px;text-align:center;font-size:13px;color:var(--text-hint)">검색 결과가 없습니다</div>';
+    return;
+  }
+  el.innerHTML = members.map(m => `
+    <label style="display:flex;align-items:center;gap:10px;padding:10px 12px;border-bottom:.5px solid var(--border);cursor:pointer">
+      <input type="checkbox" class="am-member-chk" data-kakao="${m.kakao}" data-name="${m.name}" data-phone="${m.phone||''}" onchange="updateAmCount()">
+      <div class="avatar" style="width:30px;height:30px;font-size:12px;flex-shrink:0">${m.name[0]}</div>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:13px;font-weight:700">${m.name}</div>
+        <div style="font-size:11px;color:var(--text-hint)">@${m.kakao} · ${m.phone||'-'}</div>
+      </div>
+    </label>`).join('');
+}
+
+window.toggleAllMembers = function(checked) {
+  document.querySelectorAll('.am-member-chk').forEach(chk => { chk.checked = checked; });
+  updateAmCount();
+};
+
+window.updateAmCount = function() {
+  const count = document.querySelectorAll('.am-member-chk:checked').length;
+  document.getElementById('am-selected-count').textContent = count + '명 선택';
+  const total = document.querySelectorAll('.am-member-chk').length;
+  document.getElementById('am-select-all').checked = total > 0 && count === total;
 };
 
 window.confirmAddMember = async function() {
-  if (!amSelectedMember) { showToast('⚠️ 등록할 회원을 선택해주세요'); return; }
+  const checked = document.querySelectorAll('.am-member-chk:checked');
+  if (!checked.length) { showToast('⚠️ 등록할 회원을 선택해주세요'); return; }
   const tripId = document.getElementById('am-trip-id').value;
   const t = TRIPS.find(x=>x.id===tripId);
   if (!t) return;
-  const n=new Date();
-  const ts=`${n.getMonth()+1}/${n.getDate()} ${String(n.getHours()).padStart(2,'0')}:${String(n.getMinutes()).padStart(2,'0')} (운영자 등록)`;
-  const newApplicants=[...(t.applicants||[]),{name:amSelectedMember.name,kakao:amSelectedMember.kakao,phone:amSelectedMember.phone||'',time:ts}];
+  const n = new Date();
+  const ts = `${n.getMonth()+1}/${n.getDate()} ${String(n.getHours()).padStart(2,'0')}:${String(n.getMinutes()).padStart(2,'0')} (운영자 등록)`;
+  const newApplicants = Array.from(checked).map(chk => ({
+    name: chk.dataset.name, kakao: chk.dataset.kakao, phone: chk.dataset.phone||'', paid: false, time: ts
+  }));
+  // 정원 초과 체크
+  const currentCount = (t.applicants||[]).length;
+  if (currentCount + newApplicants.length > t.capacity) {
+    if (!confirm(`정원(${t.capacity}명)을 초과합니다. (현재 ${currentCount}명 + 추가 ${newApplicants.length}명)\n계속 등록하시겠습니까?`)) return;
+  }
   try {
-    await updateDoc(doc(db,'trips',tripId),{applicants:newApplicants});
+    await updateDoc(doc(db,'trips',tripId), { applicants: [...(t.applicants||[]), ...newApplicants] });
     closeModal('add-member-modal');
-    showToast(`✅ ${amSelectedMember.name}님이 출조에 등록되었습니다`);
-    amSelectedMember = null;
+    showToast(`✅ ${newApplicants.length}명이 출조에 등록되었습니다`);
   } catch(e) { showToast('⚠️ 등록 중 오류 발생'); console.error(e); }
 };
 
