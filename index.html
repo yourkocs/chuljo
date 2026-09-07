@@ -63,6 +63,18 @@ body{font-family:'Noto Sans KR',sans-serif;background:var(--bg);color:var(--text
 .trip-card-result{padding:7px 14px;display:flex;align-items:center;gap:6px;border-top:.5px solid var(--border);font-size:12px;font-weight:700}
 .trip-card-result.done{background:rgba(30,138,82,.08);color:var(--fish)}
 .trip-card-result.cancelled{background:rgba(201,53,53,.08);color:#FF6B6B}
+.score-card{background:var(--card);border:.5px solid var(--border);border-radius:var(--radius-sm);margin-bottom:10px;overflow:hidden}
+.score-card-head{padding:11px 14px;display:flex;align-items:center;gap:10px;border-bottom:.5px solid var(--border);background:var(--bg)}
+.score-rank-badge{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;flex-shrink:0}
+.score-rank-1{background:#FFD700;color:#7A4F00}
+.score-rank-2{background:#C0C0C0;color:#444}
+.score-rank-3{background:#CD7F32;color:#fff}
+.score-rank-n{background:var(--border);color:var(--text-hint)}
+.score-bar-wrap{background:var(--bg);border-radius:4px;height:6px;overflow:hidden;margin-top:4px}
+.score-bar-fill{height:100%;border-radius:4px;background:var(--ocean);transition:width .4s}
+.attend-chip{display:inline-flex;align-items:center;gap:4px;font-size:11px;padding:3px 8px;border-radius:12px;border:none;cursor:pointer;font-family:inherit;font-weight:700;transition:all .15s}
+.attend-chip.on{background:var(--fish);color:#fff}
+.attend-chip.off{background:var(--border);color:var(--text-hint)}
 .trip-card-body{padding:11px 14px 10px}
 .trip-meta{display:flex;flex-wrap:wrap;gap:10px}
 .meta-item{display:flex;align-items:center;gap:4px;font-size:12px;color:var(--text-sub)}
@@ -350,10 +362,11 @@ textarea.form-input{resize:vertical;min-height:110px;line-height:1.6}
     <!-- 운영자 -->
     <div id="page-admin" class="page">
       <p class="sec-title" style="padding-top:4px">운영자 대시보드</p>
-      <!-- 운영자 메인 탭: 출조관리 / 회원관리 -->
+      <!-- 운영자 메인 탭: 출조관리 / 회원관리 / 점수관리 -->
       <div class="tab-bar" style="margin-bottom:14px">
         <button class="tab-btn2 on" id="amain-trip" onclick="switchAdminMainTab('trip')"><i class="ti ti-fish" style="font-size:14px"></i> 출조관리</button>
         <button class="tab-btn2" id="amain-member" onclick="switchAdminMainTab('member')"><i class="ti ti-users" style="font-size:14px"></i> 회원관리</button>
+        <button class="tab-btn2" id="amain-score" onclick="switchAdminMainTab('score')"><i class="ti ti-trophy" style="font-size:14px"></i> 점수관리</button>
       </div>
 
       <!-- 출조관리 섹션 -->
@@ -382,6 +395,23 @@ textarea.form-input{resize:vertical;min-height:110px;line-height:1.6}
         <div class="stats-row" id="member-stats" style="margin-bottom:14px"></div>
         <!-- 목록 -->
         <div id="member-list"></div>
+      </div>
+
+      <!-- 점수관리 섹션 -->
+      <div id="admin-score-section" style="display:none">
+        <!-- 연도 선택 -->
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+          <div style="display:flex;align-items:center;gap:8px">
+            <i class="ti ti-calendar" style="color:var(--ocean)"></i>
+            <select class="form-input" id="score-year" style="width:auto;padding:6px 10px;font-size:13px;font-weight:700" onchange="renderScoreBoard()"></select>
+            <span style="font-size:13px;color:var(--text-hint)">1월~11월</span>
+          </div>
+          <button class="btn btn-outline" style="font-size:12px;padding:7px 12px;border:.5px solid var(--border)" onclick="renderScoreBoard()">
+            <i class="ti ti-refresh"></i> 새로고침
+          </button>
+        </div>
+        <!-- 점수 현황 -->
+        <div id="score-board"></div>
       </div>
     </div>
 
@@ -625,6 +655,53 @@ textarea.form-input{resize:vertical;min-height:110px;line-height:1.6}
     <div style="display:flex;gap:10px">
       <button class="btn btn-primary" style="flex:1" onclick="closeModal('push-modal')"><i class="ti ti-check"></i> 저장</button>
       <button class="btn btn-outline" style="flex:0 0 72px;border:.5px solid var(--border)" onclick="closeModal('push-modal')">닫기</button>
+    </div>
+  </div>
+</div>
+
+<!-- 참석 확인 모달 -->
+<div class="modal-overlay" id="attend-modal">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title"><i class="ti ti-user-check"></i> 참석 확인</div>
+    <input type="hidden" id="attend-trip-id">
+    <div style="font-size:12px;color:var(--text-hint);margin-bottom:12px">실제 출조에 참석한 회원을 체크해주세요. 출조 횟수에 반영됩니다.</div>
+    <div id="attend-list" style="max-height:320px;overflow-y:auto;border:.5px solid var(--border);border-radius:var(--radius-xs);margin-bottom:14px"></div>
+    <div style="display:flex;gap:10px">
+      <button class="btn btn-primary" style="flex:1" onclick="submitAttend()"><i class="ti ti-check"></i> 저장</button>
+      <button class="btn btn-outline" style="flex:0 0 72px;border:.5px solid var(--border)" onclick="closeModal('attend-modal')">닫기</button>
+    </div>
+  </div>
+</div>
+
+<!-- 🏆 장원 입력 모달 -->
+<div class="modal-overlay" id="award-modal">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title"><i class="ti ti-trophy"></i> 장원 입력</div>
+    <input type="hidden" id="award-trip-id">
+    <div style="background:var(--bg);border-radius:var(--radius-xs);padding:10px 13px;margin-bottom:14px">
+      <div style="font-size:12px;color:var(--text-hint);margin-bottom:2px">출조</div>
+      <div style="font-size:13px;font-weight:700" id="award-trip-title">-</div>
+    </div>
+    <!-- 1등 -->
+    <div class="form-group">
+      <label class="form-label"><span style="background:#FFD700;color:#7A4F00;border-radius:50%;width:20px;height:20px;display:inline-flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;margin-right:4px">1</span> 장원 1등</label>
+      <select class="form-input" id="award-1st"><option value="">-- 선택 --</option></select>
+    </div>
+    <!-- 2등 -->
+    <div class="form-group">
+      <label class="form-label"><span style="background:#C0C0C0;color:#444;border-radius:50%;width:20px;height:20px;display:inline-flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;margin-right:4px">2</span> 장원 2등</label>
+      <select class="form-input" id="award-2nd"><option value="">-- 선택 --</option></select>
+    </div>
+    <!-- 3등 -->
+    <div class="form-group">
+      <label class="form-label"><span style="background:#CD7F32;color:#fff;border-radius:50%;width:20px;height:20px;display:inline-flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;margin-right:4px">3</span> 장원 3등</label>
+      <select class="form-input" id="award-3rd"><option value="">-- 선택 --</option></select>
+    </div>
+    <div style="display:flex;gap:10px">
+      <button class="btn btn-primary" style="flex:1" onclick="submitAward()"><i class="ti ti-check"></i> 저장</button>
+      <button class="btn btn-outline" style="flex:0 0 72px;border:.5px solid var(--border)" onclick="closeModal('award-modal')">취소</button>
     </div>
   </div>
 </div>
@@ -1502,12 +1579,147 @@ let adminMainTab = 'trip';
 
 window.switchAdminMainTab = function(tab) {
   adminMainTab = tab;
-  document.getElementById('amain-trip').className  = 'tab-btn2' + (tab==='trip'?' on':'');
-  document.getElementById('amain-member').className = 'tab-btn2' + (tab==='member'?' on':'');
-  document.getElementById('admin-trip-section').style.display   = tab==='trip'?'block':'none';
-  document.getElementById('admin-member-section').style.display = tab==='member'?'block':'none';
+  ['trip','member','score'].forEach(t => {
+    document.getElementById(`amain-${t}`).className = 'tab-btn2' + (t===tab?' on':'');
+    const sec = document.getElementById(`admin-${t}-section`);
+    if (sec) sec.style.display = t===tab ? 'block' : 'none';
+  });
   if (tab==='member') renderMembers();
+  if (tab==='score') { initScoreYear(); renderScoreBoard(); }
 };
+
+/* ── 🏆 장원 입력 ─────────────────────────────── */
+window.openAwardModal = function(tripId) {
+  const t = TRIPS.find(x=>x.id===tripId);
+  if (!t) return;
+  document.getElementById('award-trip-id').value = tripId;
+  document.getElementById('award-trip-title').textContent = `${t.title} (${t.date})`;
+  const attended = (t.applicants||[]).filter(a=>a.attended);
+  if (!attended.length) { showToast('⚠️ 참석 확인된 회원이 없습니다. 먼저 참석 확인을 해주세요'); return; }
+  const opts = `<option value="">-- 선택 --</option>` +
+    attended.map(a=>`<option value="${a.kakao}" data-name="${a.name}">${a.name} (@${a.kakao})</option>`).join('');
+  ['1st','2nd','3rd'].forEach(r => { document.getElementById(`award-${r}`).innerHTML = opts; });
+  const awards = t.awards || {};
+  ['1st','2nd','3rd'].forEach(r => { if (awards[r]) document.getElementById(`award-${r}`).value = awards[r].kakao||''; });
+  document.getElementById('award-modal').classList.add('open');
+};
+
+window.submitAward = async function() {
+  const tripId = document.getElementById('award-trip-id').value;
+  const t = TRIPS.find(x=>x.id===tripId);
+  if (!t) return;
+  const get = id => {
+    const el = document.getElementById(id);
+    const opt = el.options[el.selectedIndex];
+    return el.value ? { kakao: el.value, name: opt?.dataset?.name||'' } : null;
+  };
+  const awards = {};
+  const r1=get('award-1st'); if(r1) awards['1st']=r1;
+  const r2=get('award-2nd'); if(r2) awards['2nd']=r2;
+  const r3=get('award-3rd'); if(r3) awards['3rd']=r3;
+  const vals = Object.values(awards).map(a=>a.kakao);
+  if (new Set(vals).size !== vals.length) { showToast('⚠️ 같은 회원이 중복 선택되었습니다'); return; }
+  try {
+    await updateDoc(doc(db,'trips',tripId), { awards });
+    closeModal('award-modal');
+    showToast('✅ 장원 기록이 저장되었습니다');
+  } catch(e) { showToast('⚠️ 저장 중 오류 발생'); console.error(e); }
+};
+
+/* ── ✅ 참석 확인 토글 ───────────────────────── */
+window.toggleAttend = async function(tripId, idx) {
+  const t = TRIPS.find(x=>x.id===tripId);
+  if (!t) return;
+  const updated = (t.applicants||[]).map((a,i)=> i===idx ? {...a, attended:!a.attended} : a);
+  try {
+    await updateDoc(doc(db,'trips',tripId), { applicants: updated });
+    const btn = document.querySelector(`#attend-chips-${tripId} button:nth-child(${idx+1})`);
+    if (btn) {
+      const on = updated[idx].attended;
+      btn.className = `attend-chip ${on?'on':'off'}`;
+      btn.innerHTML = `${on?'✅':'○'} ${updated[idx].name}`;
+    }
+  } catch(e) { showToast('⚠️ 오류 발생'); console.error(e); }
+};
+
+/* ── 🏅 점수 현황 ────────────────────────────── */
+const SCORE_RULES = { trip:[15,10,6], award:[5,3,2] };
+
+function calcScores(year) {
+  const jan = new Date(year,0,1), nov = new Date(year,10,30);
+  const trips = TRIPS.filter(t => {
+    if (!t.date) return false;
+    const d = new Date(t.date);
+    return d>=jan && d<=nov && t.status==='done';
+  });
+  const map = {};
+  MEMBERS.forEach(m => { map[m.kakao]={name:m.name,kakao:m.kakao,tripCount:0,awardPts:0,awardList:[],tripPts:0,tripRank:0}; });
+  trips.forEach(t => {
+    (t.applicants||[]).filter(a=>a.attended).forEach(a => {
+      if (!map[a.kakao]) map[a.kakao]={name:a.name,kakao:a.kakao,tripCount:0,awardPts:0,awardList:[],tripPts:0,tripRank:0};
+      map[a.kakao].tripCount++;
+    });
+    const awards=t.awards||{};
+    [['1st',0],['2nd',1],['3rd',2]].forEach(([key,ri])=>{
+      if(awards[key]&&map[awards[key].kakao]){
+        map[awards[key].kakao].awardPts+=SCORE_RULES.award[ri];
+        map[awards[key].kakao].awardList.push({tripTitle:t.title,date:t.date,rank:ri+1,pts:SCORE_RULES.award[ri]});
+      }
+    });
+  });
+  // 출조 횟수 순위 점수
+  const sorted=Object.values(map).filter(m=>m.tripCount>0||m.awardPts>0).sort((a,b)=>b.tripCount-a.tripCount);
+  let rank=0,prev=-1;
+  sorted.forEach((m,i)=>{
+    if(m.tripCount!==prev){rank=i+1;} prev=m.tripCount; m.tripRank=rank;
+    m.tripPts=rank<=3?SCORE_RULES.trip[rank-1]:0;
+  });
+  sorted.forEach(m=>{ m.total=(m.tripPts||0)+m.awardPts; });
+  return sorted.sort((a,b)=>b.total-a.total||b.tripCount-a.tripCount);
+}
+
+window.renderScoreBoard = function() {
+  const year = parseInt(document.getElementById('score-year')?.value||new Date().getFullYear());
+  const el = document.getElementById('score-board');
+  if (!el) return;
+  const scores = calcScores(year);
+  if (!scores.length) { el.innerHTML='<div class="empty"><i class="ti ti-trophy-off"></i><p>해당 연도 완료된 출조가 없습니다</p></div>'; return; }
+  const maxScore = scores[0]?.total||1;
+  let rank=0,prevTotal=-1;
+  el.innerHTML = scores.map((m,i)=>{
+    if(m.total!==prevTotal) rank=i+1; prevTotal=m.total;
+    const rc=rank===1?'score-rank-1':rank===2?'score-rank-2':rank===3?'score-rank-3':'score-rank-n';
+    const badges=m.awardList.map(a=>`<span style="font-size:10px;background:var(--bg);border:.5px solid var(--border);border-radius:10px;padding:2px 7px">${a.rank}등 ${a.tripTitle.substring(0,8)} +${a.pts}점</span>`).join(' ');
+    return `<div class="score-card">
+      <div class="score-card-head">
+        <div class="score-rank-badge ${rc}">${rank}</div>
+        <div class="avatar" style="width:32px;height:32px;font-size:13px;flex-shrink:0">${m.name[0]}</div>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:14px;font-weight:800">${m.name}</div>
+          <div style="font-size:11px;color:var(--text-hint)">@${m.kakao}</div>
+        </div>
+        <div style="text-align:right;flex-shrink:0">
+          <div style="font-size:20px;font-weight:800;color:var(--ocean)">${m.total}<span style="font-size:12px">점</span></div>
+        </div>
+      </div>
+      <div style="padding:10px 14px">
+        <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px">
+          <span>출조 <b>${m.tripCount}회</b> (${m.tripRank}위 +${m.tripPts}점)</span>
+          <span>장원 <b style="color:var(--sand)">${m.awardPts}점</b></span>
+        </div>
+        <div class="score-bar-wrap"><div class="score-bar-fill" style="width:${Math.round(m.total/maxScore*100)}%"></div></div>
+        ${badges?`<div style="margin-top:7px;display:flex;flex-wrap:wrap;gap:4px">${badges}</div>`:''}
+      </div>
+    </div>`;
+  }).join('');
+};
+
+function initScoreYear() {
+  const sel=document.getElementById('score-year'); if(!sel) return;
+  const cur=new Date().getFullYear();
+  sel.innerHTML=[cur,cur-1,cur-2].map(y=>`<option value="${y}">${y}년</option>`).join('');
+  sel.value=cur;
+}
 
 /* ── 회원 관리 ───────────────────────────────── */
 function renderMembers() {
@@ -1616,7 +1828,11 @@ function renderAdmin(){
     const chips=(t.applicants||[]).map(a=>`<span class="chip">${a.name}</span>`).join('');
     const isPendingTab = adminTab==='pending';
     const actionBtns=isPastTab
-      ?`<button class="btn btn-sm" onclick="deleteTrip('${t.id}',event)" style="background:var(--danger-light);color:var(--danger);padding:7px 12px;border-radius:8px;border:none;cursor:pointer;font-family:inherit;font-weight:700;display:flex;align-items:center;gap:4px"><i class="ti ti-trash" style="font-size:14px"></i> 삭제</button>`
+      ?`<div style="display:flex;gap:6px;align-items:center">
+          <button class="btn btn-sm" onclick="openAttendModal('${t.id}',event)" style="background:var(--ocean-light);color:var(--ocean);padding:7px 11px;border:none;border-radius:8px;cursor:pointer;font-family:inherit;font-weight:700;font-size:12px"><i class="ti ti-user-check" style="font-size:13px"></i> 참석확인</button>
+          <button class="btn btn-sm" onclick="openAwardModal('${t.id}',event)" style="background:rgba(245,166,35,.15);color:#7A4F00;padding:7px 11px;border:none;border-radius:8px;cursor:pointer;font-family:inherit;font-weight:700;font-size:12px"><i class="ti ti-trophy" style="font-size:13px"></i> 장원입력</button>
+          <button class="btn btn-sm" onclick="deleteTrip('${t.id}',event)" style="background:var(--danger-light);color:var(--danger);padding:7px 11px;border-radius:8px;border:none;cursor:pointer;font-family:inherit;font-weight:700"><i class="ti ti-trash" style="font-size:14px"></i></button>
+        </div>`
       :isPendingTab
       ?`<div style="display:flex;gap:6px;align-items:center">
           <button class="btn btn-outline btn-sm" onclick="openEditModal('${t.id}',event)" style="border:.5px solid var(--border);padding:7px 11px;border-radius:8px"><i class="ti ti-edit" style="font-size:14px"></i></button>
@@ -1658,6 +1874,19 @@ function renderAdmin(){
           <i class="ti ti-user-plus"></i> 출조 대상자 직접 등록
         </button>`:''}
         ${chips?`<div style="margin-bottom:10px">${chips}</div>`:''}
+        ${isPastTab?`
+        <div style="margin-bottom:8px">
+          <div style="font-size:11px;font-weight:700;color:var(--text-sub);margin-bottom:6px"><i class="ti ti-user-check"></i> 참석 확인</div>
+          <div style="display:flex;flex-wrap:wrap;gap:6px" id="attend-chips-${t.id}">
+            ${(t.applicants||[]).map((a,i)=>`
+              <button class="attend-chip ${a.attended?'on':'off'}" onclick="toggleAttend('${t.id}',${i})">
+                ${a.attended?'✅':'○'} ${a.name}
+              </button>`).join('')}
+          </div>
+        </div>
+        <button class="btn btn-outline" style="font-size:13px;padding:9px;border:.5px solid var(--border);margin-bottom:8px;background:var(--sand-light);border-color:rgba(245,166,35,.4)" onclick="openAwardModal('${t.id}')">
+          <i class="ti ti-trophy" style="color:var(--sand)"></i> 장원 입력
+        </button>`:''}
         <button class="btn btn-outline" style="font-size:13px;padding:9px;border:.5px solid var(--border)" onclick="goDetail('${t.id}')">
           <i class="ti ti-eye"></i> 상세 보기
         </button>
@@ -2083,7 +2312,7 @@ function showKakaoBrowserBanner() {
 /* ── Modal outside click ─────────────────────── */
 // 새 출조 등록 모달은 실수로 닫히지 않도록 외부 클릭 비활성화
 // 회원 등록, 프로필 수정 모달만 외부 클릭 시 닫힘
-['add-member-modal','edit-profile-modal','push-modal','add-applicant-modal'].forEach(id=>{
+['add-member-modal','edit-profile-modal','push-modal','add-applicant-modal','award-modal'].forEach(id=>{
   document.getElementById(id).addEventListener('click',function(e){if(e.target===this)closeModal(id);});
 });
 
