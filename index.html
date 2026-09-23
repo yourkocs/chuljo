@@ -330,11 +330,17 @@ textarea.form-input{resize:vertical;min-height:110px;line-height:1.6}
     <div id="page-home" class="page">
       <!-- 알림 배너 영역 -->
       <div id="alert-banner-wrap"></div>
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
-        <p class="sec-title" style="padding-top:4px;margin-bottom:0">모집 중인 출조</p>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+        <p class="sec-title" style="padding-top:4px;margin-bottom:0">출조 목록</p>
         <button class="btn btn-primary" style="width:auto;padding:8px 14px;font-size:12px" onclick="openNewModal()">
           <i class="ti ti-plus"></i> 출조 등록
         </button>
+      </div>
+      <!-- 홈 탭 -->
+      <div class="tab-bar" style="margin-bottom:12px">
+        <button class="tab-btn2 on" id="htab-recruiting" onclick="switchHomeTab('recruiting')">🎣 모집중</button>
+        <button class="tab-btn2" id="htab-closed" onclick="switchHomeTab('closed')">✅ 모집완료</button>
+        <button class="tab-btn2" id="htab-past" onclick="switchHomeTab('past')">📋 출조완료</button>
       </div>
       <div id="trip-list"></div>
     </div>
@@ -1210,48 +1216,62 @@ window.dismissAlert = function(e, id) {
   if(banner){ banner.style.transition='all .2s'; banner.style.opacity='0'; banner.style.height='0'; banner.style.marginBottom='0'; banner.style.padding='0'; setTimeout(()=>banner.remove(), 200); }
 };
 
+let homeTab = 'recruiting';
+
+window.switchHomeTab = function(tab) {
+  homeTab = tab;
+  ['recruiting','closed','past'].forEach(t => {
+    document.getElementById(`htab-${t}`).classList.toggle('on', t===tab);
+  });
+  renderHome();
+};
+
 function renderHome() {
   renderAlerts();
   const el = document.getElementById('trip-list');
-  const visible = TRIPS.filter(t => ME?.isAdmin || isOpen(t));
-  if (!visible.length) { el.innerHTML='<div class="empty"><i class="ti ti-fish-off"></i><p>등록된 출조가 없습니다</p></div>'; return; }
-  el.innerHTML = visible.map(t => {
+  const all = TRIPS.filter(t => ME?.isAdmin || isOpen(t));
+
+  // 탭별 필터
+  let list;
+  if (homeTab === 'recruiting') {
+    list = all.filter(t => !isPast(t) && !t.closed && !isFull(t));
+  } else if (homeTab === 'closed') {
+    list = all.filter(t => !isPast(t) && (t.closed || isFull(t)));
+  } else {
+    list = all.filter(t => isPast(t));
+  }
+
+  const emptyMsg = homeTab==='recruiting' ? '모집 중인 출조가 없습니다'
+    : homeTab==='closed' ? '모집 완료된 출조가 없습니다'
+    : '완료된 출조가 없습니다';
+
+  if (!list.length) {
+    el.innerHTML=`<div class="empty"><i class="ti ti-fish-off"></i><p>${emptyMsg}</p></div>`;
+    return;
+  }
+
+  function renderCard(t) {
     const pct=(t.applicants||[]).length/(t.capacity||1);
     const mine=isMine(t);
     const notOpenYet = !isOpen(t);
     const countdown = openCountdown(t);
     const past = isPast(t);
-
-    // 출조 결과 상태 (출조일 지난 경우)
-    const status = t.status || (past ? 'done' : null); // 기본값: 과거 출조는 '완료'
+    const status = t.status || (past ? 'done' : null);
     const statusBar = past && status ? `
-      <div class="trip-card-result ${status === 'done' ? 'done' : 'cancelled'}">
-        ${status === 'done'
-          ? '<i class="ti ti-circle-check"></i> 출조 완료'
-          : status === 'cancelled'
-            ? '<i class="ti ti-circle-x"></i> 취소 (기상악화)'
-            : status === 'cancelled_other'
-              ? '<i class="ti ti-circle-x"></i> 취소 (기타사유)'
-              : ''}
-        ${t.result ? `<span style="font-weight:400;color:var(--text-hint);font-size:11px;margin-left:4px">· ${t.result.substring(0,20)}${t.result.length>20?'...':''}</span>` : ''}
+      <div class="trip-card-result ${status==='done'?'done':'cancelled'}">
+        ${status==='done' ? '<i class="ti ti-circle-check"></i> 출조 완료'
+          : status==='cancelled' ? '<i class="ti ti-circle-x"></i> 취소 (기상악화)'
+          : '<i class="ti ti-circle-x"></i> 취소 (기타사유)'}
+        ${t.result?`<span style="font-weight:400;color:var(--text-hint);font-size:11px;margin-left:4px">· ${t.result.substring(0,20)}${t.result.length>20?'...':''}</span>`:''}
       </div>` : '';
-
-    // 상태 배지
-    const bc = past
-      ? (status === 'done' ? 'b-done' : 'b-cancelled')
-      : notOpenYet ? 'b-warn'
-      : t.closed||isFull(t) ? 'b-closed'
-      : mine ? 'b-mine'
-      : pct>=0.7 ? 'b-warn' : 'b-open';
-    const bt = past
-      ? (status === 'done' ? '완료' : '취소')
-      : notOpenYet ? '공개예정'
-      : t.closed ? '마감됨'
-      : isFull(t) ? '정원마감'
-      : mine ? '신청완료'
-      : pct>=0.7 ? '마감임박' : '모집중';
-    const isMine2 = t.createdBy === ME?.kakao; // 내가 등록한 출조
-
+    const bc = past ? (status==='done'?'b-done':'b-cancelled')
+      : notOpenYet?'b-warn' : t.closed||isFull(t)?'b-closed'
+      : mine?'b-mine' : pct>=0.7?'b-warn':'b-open';
+    const bt = past ? (status==='done'?'완료':'취소')
+      : notOpenYet?'공개예정' : t.closed?'마감됨'
+      : isFull(t)?'정원마감' : mine?'신청완료'
+      : pct>=0.7?'마감임박':'모집중';
+    const isMine2 = t.createdBy === ME?.kakao;
     return `<div class="trip-card" onclick="goDetail('${t.id}')">
       <div class="trip-card-top" style="${notOpenYet?'background:var(--text-sub)':past&&status==='cancelled'?'background:#7A2A2A':past?'background:var(--ocean-mid)':''}">
         <div style="flex:1;min-width:0"><div class="trip-title">${t.title}</div>
@@ -1274,9 +1294,10 @@ function renderHome() {
         <div class="slot-bar"><div class="slot-fill" style="width:${Math.min(pct*100,100)}%;background:${slotColor(pct)}"></div></div>
         <span style="font-size:11px;color:var(--text-hint);flex-shrink:0">마감 ${fmtDate(t.deadline)}</span>
       </div></div>`;
-  }).join('');
-}
+  }
 
+  el.innerHTML = list.map(renderCard).join('');
+}
 /* ── Detail ──────────────────────────────────── */
 function renderDetail(id) {
   const t = TRIPS.find(x=>x.id===id);
