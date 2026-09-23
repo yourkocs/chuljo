@@ -330,7 +330,12 @@ textarea.form-input{resize:vertical;min-height:110px;line-height:1.6}
     <div id="page-home" class="page">
       <!-- 알림 배너 영역 -->
       <div id="alert-banner-wrap"></div>
-      <p class="sec-title" style="padding-top:4px">모집 중인 출조</p>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+        <p class="sec-title" style="padding-top:4px;margin-bottom:0">모집 중인 출조</p>
+        <button class="btn btn-primary" style="width:auto;padding:8px 14px;font-size:12px" onclick="openNewModal()">
+          <i class="ti ti-plus"></i> 출조 등록
+        </button>
+      </div>
       <div id="trip-list"></div>
     </div>
 
@@ -1245,6 +1250,7 @@ function renderHome() {
       : isFull(t) ? '정원마감'
       : mine ? '신청완료'
       : pct>=0.7 ? '마감임박' : '모집중';
+    const isMine2 = t.createdBy === ME?.kakao; // 내가 등록한 출조
 
     return `<div class="trip-card" onclick="goDetail('${t.id}')">
       <div class="trip-card-top" style="${notOpenYet?'background:var(--text-sub)':past&&status==='cancelled'?'background:#7A2A2A':past?'background:var(--ocean-mid)':''}">
@@ -1260,6 +1266,7 @@ function renderHome() {
       <div class="trip-card-body"><div class="trip-meta">
         <div class="meta-item"><i class="ti ti-map-pin"></i>${t.location}</div>
         <div class="meta-item"><i class="ti ti-wallet"></i>${fmtCost(t.cost)}</div>
+        ${isMine2?`<div class="meta-item" style="color:var(--ocean)"><i class="ti ti-pencil"></i>내가 등록한 출조</div>`:''}
       </div></div>
       ${statusBar}
       <div class="trip-card-foot">
@@ -1332,7 +1339,7 @@ function renderDetail(id) {
     <div class="detail-hero">
       <div class="back-row"><button class="back-btn" onclick="goBack()"><i class="ti ti-arrow-left"></i></button>
       <span style="color:rgba(255,255,255,.7);font-size:13px">목록으로</span>
-      ${ME?.isAdmin ? `<button onclick="openEditModal('${t.id}',event)" style="margin-left:auto;background:rgba(255,255,255,.2);border:1px solid rgba(255,255,255,.4);color:#fff;border-radius:20px;font-size:12px;font-weight:700;padding:5px 13px;cursor:pointer;font-family:inherit"><i class="ti ti-edit"></i> 수정</button>` : ''}
+      ${(ME?.isAdmin || t.createdBy === ME?.kakao) ? `<button onclick="openEditModal('${t.id}',event)" style="margin-left:auto;background:rgba(255,255,255,.2);border:1px solid rgba(255,255,255,.4);color:#fff;border-radius:20px;font-size:12px;font-weight:700;padding:5px 13px;cursor:pointer;font-family:inherit"><i class="ti ti-edit"></i> 수정</button>` : ''}
       </div>
       <div style="color:#fff;font-size:19px;font-weight:800;line-height:1.3;margin-bottom:5px">${t.title}</div>
       <div style="color:rgba(255,255,255,.75);font-size:12px;display:flex;align-items:center;gap:5px;flex-wrap:wrap">
