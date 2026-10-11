@@ -661,6 +661,7 @@ textarea.form-input{resize:vertical;min-height:110px;line-height:1.6}
       <div style="flex:1">
         <div style="font-size:12px;font-weight:700;color:var(--text-sub)">현재 알림 상태</div>
         <div style="font-size:13px;font-weight:700" id="push-current-status">확인 중...</div>
+        <div style="font-size:11px;margin-top:2px;word-break:break-all" id="push-device-status"></div>
       </div>
     </div>
 
@@ -2275,6 +2276,8 @@ window.openPushSettings = function() {
   });
 
   document.getElementById('push-modal').classList.add('open');
+  setPushRegStatus(pushRegStatus.ok, pushRegStatus.msg || (perm === 'granted' ? '기기 등록 확인 중...' : '알림 허용 후 등록됩니다'));
+  if (perm === 'granted') registerFcmToken();
 };
 
 // 알림 허용 요청
@@ -2283,13 +2286,13 @@ window.requestPushPermission = async function() {
   try {
     const perm = await Notification.requestPermission();
     if (perm === 'granted') {
-      await registerFcmToken();
+      const ok = await registerFcmToken();
       initForegroundMessages();
       document.getElementById('push-request-banner').style.display = 'none';
       document.getElementById('push-current-status').textContent = permissionLabel('granted');
       document.getElementById('push-current-status').style.color = 'var(--fish)';
       updatePushStatusText();
-      showToast('✅ 알림이 허용되었습니다');
+      showToast(ok ? '✅ 알림이 설정되었습니다' : '⚠️ 알림 허용됨, 기기 등록 실패 (설정 창 확인)');
     } else {
       showToast('⚠️ 알림이 차단되었습니다. 브라우저 설정에서 허용해주세요');
     }
@@ -2307,16 +2310,41 @@ async function getSwRegistration() {
 }
 
 // FCM 토큰 등록 → Firestore users/{kakao}/fcmTokens
+// 이 기기의 알림 등록 상태 (알림 설정 창에 표시 → 폰에서도 실패 원인 확인 가능)
+let pushRegStatus = { ok: false, msg: '' };
+function setPushRegStatus(ok, msg) {
+  pushRegStatus = { ok, msg };
+  const el = document.getElementById('push-device-status');
+  if (el) { el.textContent = (ok ? '✅ ' : '⚠️ ') + msg; el.style.color = ok ? 'var(--fish)' : 'var(--danger)'; }
+}
+
+// 서비스워커가 activated 될 때까지 대기 (설치 직후 바로 토큰 요청하면 실패할 수 있음)
+function waitSwActive(reg, ms = 10000) {
+  if (reg.active) return Promise.resolve(reg);
+  const sw = reg.installing || reg.waiting;
+  if (!sw) return Promise.resolve(reg);
+  return new Promise(resolve => {
+    const done = () => resolve(reg);
+    sw.addEventListener('statechange', () => { if (sw.state === 'activated') done(); });
+    setTimeout(done, ms);
+  });
+}
+
 async function registerFcmToken() {
-  if (!messaging || !ME) return;
+  if (!ME) return false;
+  if (!messaging) { setPushRegStatus(false, '이 브라우저는 푸시 알림을 지원하지 않습니다'); return false; }
+  let step = '서비스워커 등록';
   try {
     const reg = await getSwRegistration();
-    if (!reg) return;
+    if (!reg) { setPushRegStatus(false, '서비스워커 등록 실패'); return false; }
+    await waitSwActive(reg);
 
+    step = '알림 토큰 발급';
     const token = await getToken(messaging, { vapidKey: VAPID_KEY, serviceWorkerRegistration: reg });
-    if (!token) return;
+    if (!token) { setPushRegStatus(false, '알림 토큰을 받지 못했습니다'); return false; }
 
     // Firestore에 토큰 저장 (중복 방지: 토큰을 문서 ID로 사용)
+    step = '토큰 저장';
     const tokenDoc = doc(db, 'users', ME.kakao, 'fcmTokens', token);
     await setDoc(tokenDoc, {
       token,
@@ -2325,8 +2353,14 @@ async function registerFcmToken() {
     }, { merge: true });
 
     localStorage.setItem('fcm_token', token);
+    setPushRegStatus(true, '이 기기로 알림을 받습니다');
     console.log('FCM 토큰 등록 완료:', token.substring(0, 20) + '...');
-  } catch(e) { console.error('FCM 토큰 등록 오류:', e); }
+    return true;
+  } catch(e) {
+    console.error('FCM 토큰 등록 오류:', e);
+    setPushRegStatus(false, `${step} 실패: ${e.code || e.message || e}`);
+    return false;
+  }
 }
 
 // 알림 개별 토글 저장
