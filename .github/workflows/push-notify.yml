@@ -4,6 +4,11 @@ on:
   schedule:
     - cron: '*/5 * * * *'   # 5분마다 (GitHub 사정에 따라 지연될 수 있음)
   workflow_dispatch:        # Actions 탭에서 수동 실행
+    inputs:
+      test:
+        description: '운영자 기기에만 테스트 알림 보내기'
+        type: boolean
+        default: false
 
 concurrency:
   group: push-notify
@@ -27,3 +32,4 @@ jobs:
       - run: node notify.mjs
         env:
           FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          TEST_NOTIFY: ${{ inputs.test }}

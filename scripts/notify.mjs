@@ -36,7 +36,13 @@ for (const d of tokenSnap.docs) {
   tokensByUser.get(kakao).push(d);
 }
 
-const plans = planNotifications(trips, users, now, { bootstrap });
+// 수동 실행 시 테스트 모드: 운영자 기기에만 테스트 알림 발송
+const TEST = process.env.TEST_NOTIFY === 'true';
+const plans = TEST
+  ? [{ tripId: null, flag: 'test', url: '/chuljo/', silent: false,
+       recipients: users.filter(u => u.isAdmin).map(u => u.kakao),
+       title: '🔔 출조마당 테스트 알림', body: '이 알림이 보이면 푸시 설정이 정상입니다!' }]
+  : planNotifications(trips, users, now, { bootstrap });
 console.log(`출조 ${trips.length} · 회원 ${users.length} · 토큰 ${tokenSnap.size} · 처리 ${plans.length}건${bootstrap ? ' (첫 실행: 기록만)' : ''}`);
 
 const INVALID = new Set(['messaging/registration-token-not-registered', 'messaging/invalid-registration-token', 'messaging/invalid-argument']);
@@ -60,7 +66,7 @@ for (const p of plans) {
         !r.success && INVALID.has(r.error?.code) ? chunk[j].ref.delete() : null));
     }
   }
-  if (!DRY_RUN) await db.doc(`trips/${p.tripId}`).update({ [`notified.${p.flag}`]: FieldValue.serverTimestamp() });
+  if (!DRY_RUN && p.tripId) await db.doc(`trips/${p.tripId}`).update({ [`notified.${p.flag}`]: FieldValue.serverTimestamp() });
 }
 
-if (bootstrap && !DRY_RUN) await metaRef.set({ initializedAt: FieldValue.serverTimestamp() });
+if (bootstrap && !DRY_RUN && !TEST) await metaRef.set({ initializedAt: FieldValue.serverTimestamp() });
