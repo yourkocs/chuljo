@@ -707,17 +707,17 @@ textarea.form-input{resize:vertical;min-height:110px;line-height:1.6}
     </div>
     <!-- 1등 -->
     <div class="form-group">
-      <label class="form-label"><span style="background:#FFD700;color:#7A4F00;border-radius:50%;width:20px;height:20px;display:inline-flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;margin-right:4px">1</span> 장원 1등</label>
+      <label class="form-label"><span style="background:#FFD700;color:#7A4F00;border-radius:50%;width:20px;height:20px;display:inline-flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;margin-right:4px">1</span> 장원</label>
       <select class="form-input" id="award-1st"><option value="">-- 선택 --</option></select>
     </div>
     <!-- 2등 -->
     <div class="form-group">
-      <label class="form-label"><span style="background:#C0C0C0;color:#444;border-radius:50%;width:20px;height:20px;display:inline-flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;margin-right:4px">2</span> 장원 2등</label>
+      <label class="form-label"><span style="background:#C0C0C0;color:#444;border-radius:50%;width:20px;height:20px;display:inline-flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;margin-right:4px">2</span> 부장원</label>
       <select class="form-input" id="award-2nd"><option value="">-- 선택 --</option></select>
     </div>
     <!-- 3등 -->
     <div class="form-group">
-      <label class="form-label"><span style="background:#CD7F32;color:#fff;border-radius:50%;width:20px;height:20px;display:inline-flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;margin-right:4px">3</span> 장원 3등</label>
+      <label class="form-label"><span style="background:#CD7F32;color:#fff;border-radius:50%;width:20px;height:20px;display:inline-flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;margin-right:4px">3</span> 3위 <span style="color:var(--text-hint);font-weight:400">(선택)</span></label>
       <select class="form-input" id="award-3rd"><option value="">-- 선택 --</option></select>
     </div>
     <div style="display:flex;gap:10px">
@@ -763,7 +763,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
 import {
   getFirestore, collection, doc,
   addDoc, updateDoc, deleteDoc, getDoc, setDoc,
-  onSnapshot, query, orderBy, where, serverTimestamp, getDocs
+  onSnapshot, query, orderBy, where, serverTimestamp, getDocs, runTransaction
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 import { getMessaging, getToken, onMessage } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-messaging.js";
 import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
@@ -1345,13 +1345,13 @@ function renderDetail(id) {
   else btnHtml=`<button class="btn btn-primary" style="margin-bottom:14px" onclick="applyTrip('${id}')"><i class="ti ti-fish"></i> 출조 신청하기</button>`;
 
   const paid_total = (t.applicants||[]).filter(a=>a.paid).length;
-  const listHtml=(t.applicants||[]).map((a,idx)=>{
+  const listHtml=(t.applicants||[]).map(a=>{
     const isMe=a.kakao===ME?.kakao;
     const adminControls = ME?.isAdmin ? `
-      <button class="paid-btn ${a.paid?'paid':'unpaid'}" onclick="togglePaid('${id}',${idx},${!a.paid})">
+      <button class="paid-btn ${a.paid?'paid':'unpaid'}" onclick="togglePaid('${id}','${a.kakao}',${!a.paid})">
         ${a.paid?'✅ 입금':'💰 미입금'}
       </button>
-      <button onclick="removeApplicant('${id}',${idx})" style="background:none;border:none;cursor:pointer;color:var(--text-hint);padding:4px;font-size:16px;flex-shrink:0" title="삭제">
+      <button onclick="removeApplicant('${id}','${a.kakao}')" style="background:none;border:none;cursor:pointer;color:var(--text-hint);padding:4px;font-size:16px;flex-shrink:0" title="삭제">
         <i class="ti ti-user-minus"></i>
       </button>` : `<div style="font-size:10px;font-weight:700;padding:3px 8px;border-radius:20px;flex-shrink:0;${a.paid?'background:var(--fish-light);color:var(--fish)':'background:var(--bg);color:var(--text-hint);border:.5px solid var(--border)'}">
         ${a.paid?'✅ 입금':'미입금'}
@@ -1420,27 +1420,37 @@ function renderDetail(id) {
     </div>`;
 }
 
+/* ── 신청자 배열 트랜잭션 수정 ───────────────── */
+// 서버의 최신 applicants를 읽어 fn으로 변환 후 저장 (동시 수정 시 자동 재시도)
+// fn에서 Error('CODE')를 던지면 트랜잭션이 취소되고 그대로 전달됨
+function mutateApplicants(tripId, fn) {
+  const ref = doc(db,'trips',tripId);
+  return runTransaction(db, async tx => {
+    const snap = await tx.get(ref);
+    if (!snap.exists()) throw new Error('NOT_FOUND');
+    const data = snap.data();
+    const updated = fn([...(data.applicants||[])], data);
+    tx.update(ref, { applicants: updated });
+    return updated;
+  });
+}
+
 /* ── 입금 여부 토글 ──────────────────────────── */
-window.togglePaid = async function(tripId, idx, paidVal) {
-  const t = TRIPS.find(x=>x.id===tripId);
-  if(!t) return;
-  const updated = [...(t.applicants||[])];
-  updated[idx] = { ...updated[idx], paid: paidVal };
+window.togglePaid = async function(tripId, kakao, paidVal) {
   try {
-    await updateDoc(doc(db,'trips',tripId), { applicants: updated });
+    await mutateApplicants(tripId, list => list.map(a => a.kakao===kakao ? { ...a, paid: paidVal } : a));
     showToast(paidVal ? '✅ 입금 확인 처리' : '💰 미입금으로 변경');
   } catch(e) { showToast('⚠️ 오류 발생'); console.error(e); }
 };
 
 /* ── 신청자 삭제 (운영자) ─────────────────────── */
-window.removeApplicant = async function(tripId, idx) {
+window.removeApplicant = async function(tripId, kakao) {
   const t = TRIPS.find(x=>x.id===tripId);
   if(!t) return;
-  const name = (t.applicants||[])[idx]?.name || '';
+  const name = (t.applicants||[]).find(a=>a.kakao===kakao)?.name || '';
   if(!confirm(`${name} 님을 신청자 명단에서 삭제할까요?`)) return;
-  const updated = (t.applicants||[]).filter((_,i)=>i!==idx);
   try {
-    await updateDoc(doc(db,'trips',tripId), { applicants: updated });
+    await mutateApplicants(tripId, list => list.filter(a => a.kakao!==kakao));
     showToast(`✅ ${name} 님이 삭제되었습니다`);
   } catch(e) { showToast('⚠️ 삭제 중 오류 발생'); console.error(e); }
 };
@@ -1526,22 +1536,37 @@ window.submitAddApplicants = async function() {
   }
 
   try {
-    const updated = [...(t.applicants||[]), ...newApplicants];
-    await updateDoc(doc(db,'trips',tripId), { applicants: updated });
+    await mutateApplicants(tripId, list => {
+      const exists = new Set(list.map(a=>a.kakao));
+      return [...list, ...newApplicants.filter(a=>!exists.has(a.kakao))];
+    });
     closeModal('add-applicant-modal');
     showToast(`✅ ${newApplicants.length}명이 등록되었습니다`);
   } catch(e) { showToast('⚠️ 등록 중 오류 발생'); console.error(e); }
 };
 
+let _applying = false;
 window.applyTrip = async function(id) {
   const t=TRIPS.find(x=>x.id===id);
-  if(!t||!canApply(t)) return;
+  if(!t||!canApply(t)||_applying) return;
+  _applying = true;
   const n=new Date();
   const ts=`${n.getMonth()+1}/${n.getDate()} ${String(n.getHours()).padStart(2,'0')}:${String(n.getMinutes()).padStart(2,'0')}`;
   try {
-    await updateDoc(doc(db,'trips',id),{applicants:[...(t.applicants||[]),{name:ME.name,kakao:ME.kakao,phone:ME.phone||'',time:ts}]});
+    // 선착순: 서버 최신 명단 기준으로 정원/중복/마감을 다시 확인 후 추가
+    await mutateApplicants(id, (list, data) => {
+      if (list.some(a=>a.kakao===ME.kakao)) throw new Error('ALREADY');
+      const cur = { ...data, applicants: list };
+      if (data.closed || isPastDeadline(cur) || !isOpen(cur)) throw new Error('CLOSED');
+      if (isFull(cur)) throw new Error('FULL');
+      return [...list, {name:ME.name,kakao:ME.kakao,phone:ME.phone||'',time:ts}];
+    });
     showToast('✅ 신청 완료! 마감 후 채팅링크가 공개됩니다');
-  } catch(e){showToast('⚠️ 신청 중 오류 발생');console.error(e);}
+  } catch(e){
+    const msg = { FULL:'😢 아쉽게도 정원이 마감되었습니다', ALREADY:'이미 신청한 출조입니다', CLOSED:'⚠️ 신청 가능한 기간이 아닙니다' }[e.message];
+    showToast(msg || '⚠️ 신청 중 오류 발생');
+    if (!msg) console.error(e);
+  } finally { _applying = false; }
 };
 
 window.openKakao=function(url){if(url&&url.startsWith('http'))window.open(url,'_blank');else showToast('카카오 오픈채팅 링크를 확인해주세요');};
@@ -1644,13 +1669,15 @@ window.openAwardModal = function(tripId) {
   if (!t) return;
   document.getElementById('award-trip-id').value = tripId;
   document.getElementById('award-trip-title').textContent = `${t.title} (${t.date})`;
-  const attended = (t.applicants||[]).filter(a=>a.attended);
-  if (!attended.length) { showToast('⚠️ 참석 확인된 회원이 없습니다. 먼저 참석 확인을 해주세요'); return; }
+  const applicants = t.applicants||[];
+  if (!applicants.length) { showToast('⚠️ 신청자가 없습니다'); return; }
+  // 참석 확인된 회원을 먼저, 미확인 회원은 뒤에 표시 (선정 시 자동 참석 처리)
+  const sorted = [...applicants.filter(a=>a.attended), ...applicants.filter(a=>!a.attended)];
   const opts = `<option value="">-- 선택 --</option>` +
-    attended.map(a=>`<option value="${a.kakao}" data-name="${a.name}">${a.name} (@${a.kakao})</option>`).join('');
+    sorted.map(a=>`<option value="${a.kakao}" data-name="${a.name}">${a.name} (@${a.kakao})${a.attended?'':' · 참석 미확인'}</option>`).join('');
   ['1st','2nd','3rd'].forEach(r => { document.getElementById(`award-${r}`).innerHTML = opts; });
   const awards = t.awards || {};
-  ['1st','2nd','3rd'].forEach(r => { if (awards[r]) document.getElementById(`award-${r}`).value = awards[r].kakao||''; });
+  ['1st','2nd','3rd'].forEach(r => { document.getElementById(`award-${r}`).value = awards[r]?.kakao || ''; });
   document.getElementById('award-modal').classList.add('open');
 };
 
@@ -1669,39 +1696,70 @@ window.submitAward = async function() {
   const r3=get('award-3rd'); if(r3) awards['3rd']=r3;
   const vals = Object.values(awards).map(a=>a.kakao);
   if (new Set(vals).size !== vals.length) { showToast('⚠️ 같은 회원이 중복 선택되었습니다'); return; }
+  const winners = new Set(vals);
+  const ref = doc(db,'trips',tripId);
   try {
-    await updateDoc(doc(db,'trips',tripId), { awards });
+    // 장원 저장 + 수상자는 참석 처리 (점수 집계는 참석자 기준)
+    await runTransaction(db, async tx => {
+      const snap = await tx.get(ref);
+      if (!snap.exists()) throw new Error('NOT_FOUND');
+      const applicants = (snap.data().applicants||[]).map(a => winners.has(a.kakao) ? { ...a, attended: true } : a);
+      tx.update(ref, { awards, applicants });
+    });
     closeModal('award-modal');
     showToast('✅ 장원 기록이 저장되었습니다');
   } catch(e) { showToast('⚠️ 저장 중 오류 발생'); console.error(e); }
 };
 
 /* ── ✅ 참석 확인 토글 ───────────────────────── */
-window.toggleAttend = async function(tripId, idx) {
+window.toggleAttend = async function(tripId, kakao) {
+  try {
+    await mutateApplicants(tripId, list => list.map(a => a.kakao===kakao ? { ...a, attended: !a.attended } : a));
+  } catch(e) { showToast('⚠️ 오류 발생'); console.error(e); }
+};
+
+/* ── ✅ 참석 확인 모달 ───────────────────────── */
+window.openAttendModal = function(tripId, e) {
+  if (e) e.stopPropagation();
   const t = TRIPS.find(x=>x.id===tripId);
   if (!t) return;
-  const updated = (t.applicants||[]).map((a,i)=> i===idx ? {...a, attended:!a.attended} : a);
+  const applicants = t.applicants||[];
+  if (!applicants.length) { showToast('⚠️ 신청자가 없습니다'); return; }
+  document.getElementById('attend-trip-id').value = tripId;
+  document.getElementById('attend-list').innerHTML = applicants.map(a => `
+    <label style="display:flex;align-items:center;gap:10px;padding:10px 12px;border-bottom:.5px solid var(--border);cursor:pointer">
+      <input type="checkbox" class="attend-chk" data-kakao="${a.kakao}" ${a.attended?'checked':''} style="width:16px;height:16px">
+      <div class="avatar" style="width:30px;height:30px;font-size:12px;flex-shrink:0">${a.name[0]}</div>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:13px;font-weight:700">${a.name}</div>
+        <div style="font-size:11px;color:var(--text-hint)">@${a.kakao}${a.paid?' · ✅ 입금':''}</div>
+      </div>
+    </label>`).join('');
+  document.getElementById('attend-modal').classList.add('open');
+};
+
+window.submitAttend = async function() {
+  const tripId = document.getElementById('attend-trip-id').value;
+  const checked = new Set(Array.from(document.querySelectorAll('.attend-chk:checked')).map(c=>c.dataset.kakao));
+  const shown = new Set(Array.from(document.querySelectorAll('.attend-chk')).map(c=>c.dataset.kakao));
   try {
-    await updateDoc(doc(db,'trips',tripId), { applicants: updated });
-    const btn = document.querySelector(`#attend-chips-${tripId} button:nth-child(${idx+1})`);
-    if (btn) {
-      const on = updated[idx].attended;
-      btn.className = `attend-chip ${on?'on':'off'}`;
-      btn.innerHTML = `${on?'✅':'○'} ${updated[idx].name}`;
-    }
-  } catch(e) { showToast('⚠️ 오류 발생'); console.error(e); }
+    // 모달에 표시된 회원만 갱신 (그 사이 추가된 신청자는 유지)
+    await mutateApplicants(tripId, list => list.map(a => shown.has(a.kakao) ? { ...a, attended: checked.has(a.kakao) } : a));
+    closeModal('attend-modal');
+    showToast(`✅ 참석 ${checked.size}명 저장되었습니다`);
+  } catch(e) { showToast('⚠️ 저장 중 오류 발생'); console.error(e); }
 };
 
 /* ── 🏅 점수 현황 ────────────────────────────── */
 const SCORE_RULES = { trip:[15,10,6], award:[5,3,2] };
+const AWARD_LABELS = ['장원','부장원','3위'];
+
+// 지난 출조는 결과 상태 미설정 시 '정상 완료'로 간주 (목록 표시와 동일 기준)
+function tripStatus(t) { return t.status || (isPast(t) ? 'done' : null); }
 
 function calcScores(year) {
-  const jan = new Date(year,0,1), nov = new Date(year,10,30);
-  const trips = TRIPS.filter(t => {
-    if (!t.date) return false;
-    const d = new Date(t.date);
-    return d>=jan && d<=nov && t.status==='done';
-  });
+  const from = `${year}-01-01`, to = `${year}-11-30`;
+  const trips = TRIPS.filter(t => t.date && t.date>=from && t.date<=to && tripStatus(t)==='done');
   const map = {};
   MEMBERS.forEach(m => { map[m.kakao]={name:m.name,kakao:m.kakao,tripCount:0,awardPts:0,awardList:[],tripPts:0,tripRank:0}; });
   trips.forEach(t => {
@@ -1739,7 +1797,7 @@ window.renderScoreBoard = function() {
   el.innerHTML = scores.map((m,i)=>{
     if(m.total!==prevTotal) rank=i+1; prevTotal=m.total;
     const rc=rank===1?'score-rank-1':rank===2?'score-rank-2':rank===3?'score-rank-3':'score-rank-n';
-    const badges=m.awardList.map(a=>`<span style="font-size:10px;background:var(--bg);border:.5px solid var(--border);border-radius:10px;padding:2px 7px">${a.rank}등 ${a.tripTitle.substring(0,8)} +${a.pts}점</span>`).join(' ');
+    const badges=m.awardList.map(a=>`<span style="font-size:10px;background:var(--bg);border:.5px solid var(--border);border-radius:10px;padding:2px 7px">${AWARD_LABELS[a.rank-1]} ${a.tripTitle.substring(0,8)} +${a.pts}점</span>`).join(' ');
     return `<div class="score-card">
       <div class="score-card-head">
         <div class="score-rank-badge ${rc}">${rank}</div>
@@ -1928,15 +1986,18 @@ function renderAdmin(){
         <div style="margin-bottom:8px">
           <div style="font-size:11px;font-weight:700;color:var(--text-sub);margin-bottom:6px"><i class="ti ti-user-check"></i> 참석 확인</div>
           <div style="display:flex;flex-wrap:wrap;gap:6px" id="attend-chips-${t.id}">
-            ${(t.applicants||[]).map((a,i)=>`
-              <button class="attend-chip ${a.attended?'on':'off'}" onclick="toggleAttend('${t.id}',${i})">
+            ${(t.applicants||[]).map(a=>`
+              <button class="attend-chip ${a.attended?'on':'off'}" onclick="toggleAttend('${t.id}','${a.kakao}')">
                 ${a.attended?'✅':'○'} ${a.name}
               </button>`).join('')}
           </div>
         </div>
         <button class="btn btn-outline" style="font-size:13px;padding:9px;border:.5px solid var(--border);margin-bottom:8px;background:var(--sand-light);border-color:rgba(245,166,35,.4)" onclick="openAwardModal('${t.id}')">
           <i class="ti ti-trophy" style="color:var(--sand)"></i> 장원 입력
-        </button>`:''}
+        </button>
+        ${t.awards&&Object.keys(t.awards).length?`<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px">
+          ${['1st','2nd','3rd'].map((k,i)=>t.awards[k]?`<span class="chip" style="background:var(--sand-light);color:#7A4F00">🏆 ${AWARD_LABELS[i]} ${t.awards[k].name}</span>`:'').join('')}
+        </div>`:''}`:''}
         <button class="btn btn-outline" style="font-size:13px;padding:9px;border:.5px solid var(--border)" onclick="goDetail('${t.id}')">
           <i class="ti ti-eye"></i> 상세 보기
         </button>
@@ -2032,7 +2093,10 @@ window.confirmAddMember = async function() {
     if (!confirm(`정원(${t.capacity}명)을 초과합니다. (현재 ${currentCount}명 + 추가 ${newApplicants.length}명)\n계속 등록하시겠습니까?`)) return;
   }
   try {
-    await updateDoc(doc(db,'trips',tripId), { applicants: [...(t.applicants||[]), ...newApplicants] });
+    await mutateApplicants(tripId, list => {
+      const exists = new Set(list.map(a=>a.kakao));
+      return [...list, ...newApplicants.filter(a=>!exists.has(a.kakao))];
+    });
     closeModal('add-member-modal');
     showToast(`✅ ${newApplicants.length}명이 출조에 등록되었습니다`);
   } catch(e) { showToast('⚠️ 등록 중 오류 발생'); console.error(e); }
@@ -2186,6 +2250,7 @@ window.requestPushPermission = async function() {
     const perm = await Notification.requestPermission();
     if (perm === 'granted') {
       await registerFcmToken();
+      initForegroundMessages();
       document.getElementById('push-request-banner').style.display = 'none';
       document.getElementById('push-current-status').textContent = permissionLabel('granted');
       document.getElementById('push-current-status').style.color = 'var(--fish)';
@@ -2197,14 +2262,22 @@ window.requestPushPermission = async function() {
   } catch(e) { console.error('알림 권한 오류:', e); showToast('⚠️ 알림 권한 요청 중 오류 발생'); }
 };
 
+// 푸시용 Service Worker 등록 (이미 등록돼 있으면 재사용)
+const SW_SCOPE = '/chuljo/';
+async function getSwRegistration() {
+  if (!('serviceWorker' in navigator)) { console.warn('SW 미지원 브라우저'); return null; }
+  try {
+    return await navigator.serviceWorker.getRegistration(SW_SCOPE)
+      || await navigator.serviceWorker.register(SW_SCOPE + 'firebase-messaging-sw.js', { scope: SW_SCOPE });
+  } catch(e) { console.error('SW 등록 실패:', e); return null; }
+}
+
 // FCM 토큰 등록 → Firestore users/{kakao}/fcmTokens
 async function registerFcmToken() {
   if (!messaging || !ME) return;
   try {
-    // Service Worker 등록 확인
-    if (!('serviceWorker' in navigator)) { console.warn('SW 미지원 브라우저'); return; }
-    const reg = await navigator.serviceWorker.getRegistration('/chuljo/');
-    if (!reg) { console.warn('SW 미등록. firebase-messaging-sw.js 배포 필요'); return; }
+    const reg = await getSwRegistration();
+    if (!reg) return;
 
     const token = await getToken(messaging, { vapidKey: VAPID_KEY, serviceWorkerRegistration: reg });
     if (!token) return;
@@ -2236,8 +2309,10 @@ window.saveNotifPref = function() {
 };
 
 // 포그라운드 메시지 수신 처리
+let _fgMsgInit = false;
 function initForegroundMessages() {
-  if (!messaging) return;
+  if (!messaging || _fgMsgInit) return;
+  _fgMsgInit = true;
   onMessage(messaging, payload => {
     const { title = '출조마당', body = '' } = payload.notification || {};
     showPushBanner(title, body, payload.data);
@@ -2370,7 +2445,7 @@ function showKakaoBrowserBanner() {
 /* ── Modal outside click ─────────────────────── */
 // 새 출조 등록 모달은 실수로 닫히지 않도록 외부 클릭 비활성화
 // 회원 등록, 프로필 수정 모달만 외부 클릭 시 닫힘
-['add-member-modal','edit-profile-modal','push-modal','add-applicant-modal','award-modal'].forEach(id=>{
+['add-member-modal','edit-profile-modal','push-modal','add-applicant-modal','award-modal','attend-modal'].forEach(id=>{
   document.getElementById(id).addEventListener('click',function(e){if(e.target===this)closeModal(id);});
 });
 
