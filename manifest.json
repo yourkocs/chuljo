@@ -1,0 +1,10 @@
+{
+  "name": "출조마당",
+  "short_name": "출조마당",
+  "start_url": "/chuljo/",
+  "scope": "/chuljo/",
+  "display": "standalone",
+  "background_color": "#0B4F6C",
+  "theme_color": "#0B4F6C",
+  "lang": "ko"
+}

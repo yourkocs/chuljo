@@ -7,6 +7,20 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#0B4F6C">
 <title>출조마당 🎣</title>
+<link rel="manifest" href="manifest.json">
+<script>
+// 카카오톡 인앱 브라우저 → 휴대폰 기본 브라우저(크롬/웨일/사파리)로 자동 전환
+window.openExternalBrowser = function() {
+  location.href = 'kakaotalk://web/openExternal?url=' + encodeURIComponent(location.href);
+};
+(function() {
+  if (!/KAKAOTALK/i.test(navigator.userAgent)) return;
+  if (/[?&](code|error)=/.test(location.search)) return; // 카카오 로그인 콜백은 그대로 처리
+  if (sessionStorage.getItem('stay_in_kakao')) return;    // 사용자가 '카톡에서 계속' 선택
+  window.__kakaoRedirected = true;
+  openExternalBrowser();
+})();
+</script>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css">
 <script src="https://t1.kakaocdn.net/kakao_js_sdk/2.7.2/kakao.min.js" crossorigin="anonymous"></script>
@@ -249,6 +263,15 @@ textarea.form-input{resize:vertical;min-height:110px;line-height:1.6}
 </style>
 </head>
 <body>
+
+<div id="kakao-redirect" style="display:none;position:fixed;inset:0;z-index:1000;background:var(--ocean);color:#fff;flex-direction:column;align-items:center;justify-content:center;padding:24px;text-align:center">
+  <div style="font-size:52px;margin-bottom:10px">🌐</div>
+  <div style="font-size:18px;font-weight:800;margin-bottom:8px">브라우저에서 열고 있어요</div>
+  <div style="font-size:13px;opacity:.8;line-height:1.6;margin-bottom:22px">출조 알림을 받으려면 크롬·웨일 같은<br>브라우저에서 이용해주세요.<br>자동으로 열리지 않으면 아래 버튼을 눌러주세요.</div>
+  <button onclick="openExternalBrowser()" style="background:#FEE500;color:#3A1D1D;border:none;border-radius:12px;padding:14px 22px;font-size:15px;font-weight:800;font-family:inherit;cursor:pointer;width:100%;max-width:280px">브라우저로 열기</button>
+  <button onclick="sessionStorage.setItem('stay_in_kakao','1');document.getElementById('kakao-redirect').style.display='none'" style="margin-top:14px;background:none;border:none;color:rgba(255,255,255,.7);font-size:12px;text-decoration:underline;font-family:inherit;cursor:pointer">카카오톡에서 계속 보기 (알림 불가)</button>
+</div>
+<script>if (window.__kakaoRedirected) document.getElementById('kakao-redirect').style.display = 'flex';</script>
 
 <div class="loading-overlay" id="loading">
   <div class="loading-logo">🎣</div>
@@ -959,6 +982,12 @@ function afterLogin() {
 }
 
 window.doLogout = function() {
+  // 로그아웃한 기기로는 더 이상 알림이 가지 않도록 토큰 삭제
+  const fcmToken = localStorage.getItem('fcm_token');
+  if (ME && fcmToken) {
+    deleteDoc(doc(db, 'users', ME.kakao, 'fcmTokens', fcmToken)).catch(()=>{});
+    localStorage.removeItem('fcm_token');
+  }
   if (unsubTrips) unsubTrips();
   if (unsubMembers) unsubMembers();
   // 카카오 로그아웃 (신버전 SDK)
@@ -2371,6 +2400,10 @@ async function initPush() {
   if (Notification.permission === 'granted') {
     await registerFcmToken();
     initForegroundMessages();
+  } else if (Notification.permission === 'default' && !localStorage.getItem('push_prompted')) {
+    // 브라우저에서 처음 로그인하면 알림 설정 창을 한 번 자동으로 띄움
+    localStorage.setItem('push_prompted', '1');
+    setTimeout(() => openPushSettings(), 1200);
   }
   // 홈 화면에 추가 유도 배너 (iOS, 미설정 상태, 처음 방문)
   if (isIosSafari() && !isPwa() && !localStorage.getItem('ios_banner_shown')) {
@@ -2397,15 +2430,6 @@ function showKakaoBrowserBanner() {
   if (localStorage.getItem('kakao_banner_dismissed')) return;
   const wrap = document.getElementById('alert-banner-wrap');
   if (!wrap) return;
-  const isAndroid = /Android/i.test(navigator.userAgent);
-  const currentUrl = location.href;
-
-  // Android: intent 스킴으로 Chrome 강제 오픈
-  // iOS: 직접 Safari로 오픈 유도 (intent 미지원)
-  const openInBrowser = isAndroid
-    ? `location.href='intent://${currentUrl.replace(/^https?:\/\//,'')}#Intent;scheme=https;package=com.android.chrome;end'`
-    : `location.href='${currentUrl}'`; // iOS는 우측 상단 … → 브라우저로 열기 안내
-
   const d = document.createElement('div');
   d.id = 'kakao-browser-banner';
   d.style.cssText = `
@@ -2421,17 +2445,14 @@ function showKakaoBrowserBanner() {
         푸시 알림은 외부 브라우저에서만 동작해요
       </div>
       <div style="font-size:11px;color:#5A3A1D;line-height:1.5">
-        ${isAndroid
-          ? '아래 버튼을 눌러 Chrome으로 열어주세요'
-          : '우측 하단 <b>···</b> → <b>기본 브라우저로 열기</b> 를 눌러주세요'}
+        아래 버튼을 눌러 크롬·웨일 등 브라우저로 열어주세요
       </div>
-      ${isAndroid ? `
-        <button onclick="${openInBrowser}"
-          style="margin-top:7px;background:#3A1D1D;color:#FEE500;border:none;
-                 border-radius:20px;font-size:11px;font-weight:700;
-                 font-family:inherit;padding:5px 14px;cursor:pointer">
-          Chrome으로 열기
-        </button>` : ''}
+      <button onclick="openExternalBrowser()"
+        style="margin-top:7px;background:#3A1D1D;color:#FEE500;border:none;
+               border-radius:20px;font-size:11px;font-weight:700;
+               font-family:inherit;padding:5px 14px;cursor:pointer">
+        브라우저로 열기
+      </button>
     </div>
     <button onclick="document.getElementById('kakao-browser-banner').remove();localStorage.setItem('kakao_banner_dismissed','1')"
       style="background:rgba(0,0,0,.1);border:none;border-radius:50%;
