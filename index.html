@@ -426,7 +426,7 @@ textarea.form-input{resize:vertical;min-height:110px;line-height:1.6}
           </button>
         </div>
         <!-- 통계 -->
-        <div class="stats-row" id="member-stats" style="margin-bottom:14px"></div>
+        <div class="stats-row" id="member-stats" style="margin-bottom:14px;grid-template-columns:repeat(4,1fr)"></div>
         <!-- 목록 -->
         <div id="member-list"></div>
       </div>
@@ -1871,10 +1871,12 @@ function renderMembers() {
   const total   = all.length;
   const admins  = all.filter(m=>m.isAdmin).length;
   const normals = total - admins;
+  const pushOn  = all.filter(m=>m.pushEnabled).length;
   document.getElementById('member-stats').innerHTML = `
     <div class="stat-box"><div class="stat-num">${total}</div><div class="stat-lab">전체 회원</div></div>
     <div class="stat-box"><div class="stat-num">${admins}</div><div class="stat-lab">운영자</div></div>
-    <div class="stat-box"><div class="stat-num">${normals}</div><div class="stat-lab">일반 회원</div></div>`;
+    <div class="stat-box"><div class="stat-num">${normals}</div><div class="stat-lab">일반 회원</div></div>
+    <div class="stat-box"><div class="stat-num" style="color:var(--fish)">${pushOn}</div><div class="stat-lab">🔔 알림 설정</div></div>`;
   filterMembers();
 }
 
@@ -1901,6 +1903,7 @@ window.filterMembers = function() {
             <div style="font-size:14px;font-weight:700;display:flex;align-items:center;gap:6px">
               ${m.name}
               ${m.isAdmin?'<span style="font-size:10px;background:var(--fish-light);color:var(--fish);padding:2px 7px;border-radius:20px;font-weight:700">운영자</span>':''}
+              ${m.pushEnabled?'<span style="font-size:10px;background:var(--ocean-light);color:var(--ocean);padding:2px 7px;border-radius:20px;font-weight:700">🔔 알림</span>':''}
             </div>
             <div style="font-size:11px;color:var(--text-hint);margin-top:2px">@${m.kakao}</div>
           </div>
@@ -2353,6 +2356,7 @@ async function registerFcmToken() {
     }, { merge: true });
 
     localStorage.setItem('fcm_token', token);
+    updateDoc(doc(db, 'users', ME.kakao), { pushEnabled: true }).catch(()=>{});
     setPushRegStatus(true, '이 기기로 알림을 받습니다');
     console.log('FCM 토큰 등록 완료:', token.substring(0, 20) + '...');
     return true;

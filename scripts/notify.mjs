@@ -36,6 +36,14 @@ for (const d of tokenSnap.docs) {
   tokensByUser.get(kakao).push(d);
 }
 
+// 회원별 알림 설정 여부(pushEnabled)를 실제 등록 기기와 맞춤 → 운영자 회원관리 화면에 표시
+// (공개 저장소라 로그에는 이름을 남기지 않고 인원수만 출력)
+if (!DRY_RUN) {
+  const fixes = users.filter(u => !!u.pushEnabled !== tokensByUser.has(u.kakao));
+  await Promise.all(fixes.map(u => db.doc(`users/${u.kakao}`).update({ pushEnabled: tokensByUser.has(u.kakao) })));
+  console.log(`알림 설정 회원 ${tokensByUser.size}명 / 전체 ${users.length}명${fixes.length ? ` (표시 갱신 ${fixes.length}명)` : ''}`);
+}
+
 // 수동 실행 시 테스트 모드: 운영자 기기에만 테스트 알림 발송
 const TEST = process.env.TEST_NOTIFY === 'true';
 const plans = TEST
