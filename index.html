@@ -823,6 +823,10 @@ let _addApplicantTripId = null;
 const ADMIN_CODE = 'fish2024';
 
 /* ── 초기화 ──────────────────────────────────── */
+// 알림 클릭으로 들어온 경우 (?trip=출조ID) → 로그인 후 해당 출조 상세로 이동
+let pendingTripId = new URLSearchParams(location.search).get('trip');
+if (pendingTripId) history.replaceState({}, document.title, location.pathname);
+
 const now = new Date();
 calYear = now.getFullYear(); calMonth = now.getMonth();
 
@@ -1019,6 +1023,7 @@ function startSync() {
       document.getElementById('db-status').textContent = '실시간 연결됨';
       if(currentPage==='home') renderAlerts();
       rerender();
+      if (pendingTripId && TRIPS.some(t=>t.id===pendingTripId)) { goDetail(pendingTripId); pendingTripId = null; }
     },
     err => { 
       dot.className = 'sync-dot off'; 
@@ -2343,7 +2348,8 @@ function initForegroundMessages() {
   if (!messaging || _fgMsgInit) return;
   _fgMsgInit = true;
   onMessage(messaging, payload => {
-    const { title = '출조마당', body = '' } = payload.notification || {};
+    const src = payload.notification || payload.data || {};
+    const title = src.title || '출조마당', body = src.body || '';
     showPushBanner(title, body, payload.data);
     // 상단 벨 뱃지 표시
     document.getElementById('topbar-bell')?.classList.add('has-dot');

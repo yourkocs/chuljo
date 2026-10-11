@@ -16,12 +16,15 @@ firebase.initializeApp({
 
 const messaging = firebase.messaging();
 
+// 서버(scripts/notify.mjs)는 data 전용 메시지를 보냄 → 여기서 직접 표시
+// (notification 필드가 있는 메시지는 SDK가 자동 표시하므로 중복 표시하지 않음)
 messaging.onBackgroundMessage(payload => {
   console.log('[SW] 백그라운드 메시지 수신:', payload);
-  const { title = '출조마당 🎣', body = '새 알림이 있습니다' } = payload.notification || {};
+  if (payload.notification) return;
   const data = payload.data || {};
+  const title = data.title || '출조마당 🎣';
   const options = {
-    body,
+    body: data.body || '새 알림이 있습니다',
     icon: '/chuljo/icon-192.png',
     badge: '/chuljo/badge-72.png',
     tag: data.tag || 'chuljo-notif',
@@ -30,7 +33,7 @@ messaging.onBackgroundMessage(payload => {
     vibrate: [200, 100, 200],
     actions: data.action ? [{ action: 'open', title: data.action }] : []
   };
-  self.registration.showNotification(title, options);
+  return self.registration.showNotification(title, options);
 });
 
 self.addEventListener('notificationclick', event => {
@@ -39,7 +42,12 @@ self.addEventListener('notificationclick', event => {
   event.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then(list => {
       for (const client of list) {
-        if (client.url.includes('/chuljo') && 'focus' in client) return client.focus();
+        if (client.url.includes('/chuljo') && 'focus' in client) {
+          // 열려 있는 앱 창을 해당 출조 화면으로 이동
+          return ('navigate' in client ? client.navigate(url) : Promise.resolve(client))
+            .then(c => (c || client).focus())
+            .catch(() => clients.openWindow(url));
+        }
       }
       return clients.openWindow(url);
     })
