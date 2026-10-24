@@ -776,14 +776,20 @@ textarea.form-input{resize:vertical;min-height:110px;line-height:1.6}
     <div class="modal-title"><i class="ti ti-armchair"></i> 자리배치 설정</div>
     <input type="hidden" id="sc-trip-id">
     <div class="form-row">
-      <div class="form-group"><label class="form-label">선수 자리 수</label><input class="form-input" type="number" min="0" id="sc-bow" oninput="updateSeatPreview(true)"></div>
-      <div class="form-group"><label class="form-label">우현 시작번호</label><input class="form-input" type="number" min="1" id="sc-start" oninput="updateSeatPreview(false)"></div>
-    </div>
-    <div class="form-row">
       <div class="form-group"><label class="form-label">좌현 자리 수</label><input class="form-input" type="number" min="0" id="sc-port" oninput="updateSeatPreview(true)"></div>
       <div class="form-group"><label class="form-label">우현 자리 수</label><input class="form-input" type="number" min="0" id="sc-star" oninput="updateSeatPreview(true)"></div>
     </div>
-    <div class="form-hint" style="margin:-4px 0 10px">우현 앞자리부터 시계방향(우현 → 좌현 → 선수)으로 번호가 매겨집니다</div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">선수 자리 수</label><input class="form-input" type="number" min="0" id="sc-bow" oninput="updateSeatPreview(true)"></div>
+      <div class="form-group"><label class="form-label">시작번호</label><input class="form-input" type="number" min="1" id="sc-start" oninput="updateSeatPreview(false)"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">번호 시작 위치</label>
+        <select class="form-input" id="sc-side" onchange="updateSeatPreview(true)"><option value="starboard">우현</option><option value="port">좌현</option></select></div>
+      <div class="form-group"><label class="form-label">번호 방향</label>
+        <select class="form-input" id="sc-dir" onchange="updateSeatPreview(true)"><option value="cw">시계방향</option><option value="ccw">반시계방향</option></select></div>
+    </div>
+    <div class="form-hint" id="sc-hint" style="margin:-4px 0 10px"></div>
     <div id="sc-preview" style="margin-bottom:14px"></div>
     <div style="display:flex;gap:10px">
       <button class="btn btn-primary" style="flex:1" onclick="saveSeatConfig()"><i class="ti ti-check"></i> 저장</button>
@@ -1520,16 +1526,44 @@ function mutateApplicants(tripId, fn) {
  *   seats: { '<번호>': kakao },           // 배정 결과
  *   bowWinners: [kakao], drawnAt, drawnBy
  * }
- * 번호: 우현 앞→뒤, 좌현 뒤→앞, 선수 왼→오 순서(시계방향)로 우현 시작번호부터 매기고, 총 자리 수를 넘으면 1번으로 돌아감
+ * 번호: 배를 위에서 볼 때(선수가 위) 시작 현·방향을 따라 한 바퀴 돌며 시작번호부터 매기고, 총 자리 수를 넘으면 1번으로 돌아감
+ *   startSide: 'starboard'(우현, 기본) | 'port'(좌현),  dir: 'cw'(시계, 기본) | 'ccw'(반시계)
+ *   시계방향 한 바퀴 = 우현(앞→뒤) → 좌현(뒤→앞) → 선수(왼→오)
  */
+const SIDE_KO = { star: '우현', port: '좌현', bow: '선수' };
+function seatSeq(c) {
+  const B = +c.bow || 0, P = +c.port || 0, S = +c.starboard || 0;
+  let seq = [
+    ...Array.from({ length: S }, (_, i) => ({ side: 'star', idx: i })),          // 우현 앞→뒤 (idx: 앞에서부터)
+    ...Array.from({ length: P }, (_, i) => ({ side: 'port', idx: P - 1 - i })),  // 좌현 뒤→앞
+    ...Array.from({ length: B }, (_, i) => ({ side: 'bow', idx: i })),           // 선수 왼→오
+  ];
+  if (c.dir === 'ccw') seq.reverse();
+  const want = c.startSide === 'port' ? 'port' : 'star';
+  const k = seq.findIndex(x => x.side === want);
+  return k > 0 ? [...seq.slice(k), ...seq.slice(0, k)] : seq;
+}
+// 기본 시작번호: 선수가 마지막 순서면 선수 자리 수 + 1 (선수 = 1번부터), 아니면 1
+function defaultSeatStart(c) {
+  const seq = seatSeq(c), B = +c.bow || 0;
+  return B && seq.length && seq[seq.length - 1].side === 'bow' ? B + 1 : 1;
+}
 function seatLayout(c) {
-  const B = +c.bow || 0, P = +c.port || 0, S = +c.starboard || 0, T = B + P + S;
-  const start = +c.start || B + 1;
-  const num = i => T ? ((start - 1 + i) % T + T) % T + 1 : 0;
-  const star = Array.from({ length: S }, (_, i) => num(i));                // 앞→뒤
-  const portCw = Array.from({ length: P }, (_, i) => num(S + i));          // 뒤→앞 (시계방향)
-  const bow = Array.from({ length: B }, (_, i) => num(S + P + i));         // 왼→오
-  return { total: T, star, port: [...portCw].reverse() /* 앞→뒤 */, bow };
+  const seq = seatSeq(c), T = seq.length;
+  const start = +c.start || defaultSeatStart(c);
+  const L = { total: T, star: [], port: [], bow: [], seq: [] };
+  seq.forEach((x, i) => {
+    const n = ((start - 1 + i) % T + T) % T + 1;
+    L[x.side][x.idx] = n;            // star/port: 앞→뒤, bow: 왼→오
+    L.seq.push({ side: x.side, n });
+  });
+  return L;
+}
+// 번호 순서대로 '우현 3~7번 → 좌현 8~12번 → 선수 1~2번'
+function seatOrderText(L) {
+  const groups = [];
+  L.seq.forEach(x => { const g = groups[groups.length - 1]; if (g && g.side === x.side) g.nums.push(x.n); else groups.push({ side: x.side, nums: [x.n] }); });
+  return groups.map(g => `${SIDE_KO[g.side]} ${rangeText(g.nums)}`).join(' → ');
 }
 function seatSideLabel(c, n) {
   const L = seatLayout(c);
@@ -1671,26 +1705,33 @@ window.openSeatConfig = function(tripId) {
   document.getElementById('sc-bow').value = c.bow ?? 0;
   document.getElementById('sc-port').value = c.port ?? 0;
   document.getElementById('sc-star').value = c.starboard ?? 0;
-  document.getElementById('sc-start').value = c.start || (+c.bow || 0) + 1;
-  document.getElementById('sc-start').dataset.auto = c.start && c.start !== (+c.bow || 0) + 1 ? '' : '1';
-  updateSeatPreview(false);
+  document.getElementById('sc-side').value = c.startSide || 'starboard';
+  document.getElementById('sc-dir').value = c.dir || 'cw';
+  const auto = defaultSeatStart(c);
+  document.getElementById('sc-start').value = c.start || auto;
+  document.getElementById('sc-start').dataset.auto = c.start && c.start !== auto ? '' : '1';
+  updateSeatPreview();
   document.getElementById('seat-config-modal').classList.add('open');
 };
 function readSeatConfig() {
   const v = id => Math.max(0, parseInt(document.getElementById(id).value) || 0);
-  return { bow: v('sc-bow'), port: v('sc-port'), starboard: v('sc-star'), start: Math.max(1, v('sc-start')) };
+  return { bow: v('sc-bow'), port: v('sc-port'), starboard: v('sc-star'), start: Math.max(1, v('sc-start')),
+    startSide: document.getElementById('sc-side').value, dir: document.getElementById('sc-dir').value };
 }
 window.updateSeatPreview = function(countChanged) {
   const startEl = document.getElementById('sc-start');
-  if (!countChanged) startEl.dataset.auto = '';            // 시작번호를 직접 고치면 자동 계산 중지
-  else if (startEl.dataset.auto) startEl.value = (parseInt(document.getElementById('sc-bow').value) || 0) + 1;
+  // countChanged: true=자리 수/위치/방향 변경, false=시작번호 직접 입력(자동 계산 중지), undefined=창 열기
+  if (countChanged === false) startEl.dataset.auto = '';
+  else if (startEl.dataset.auto) startEl.value = defaultSeatStart(readSeatConfig());
   const c = readSeatConfig(), L = seatLayout(c);
+  document.getElementById('sc-hint').textContent =
+    `${c.startSide === 'port' ? '좌현' : '우현'} ${(c.startSide === 'port') === (c.dir === 'ccw') ? '앞' : '뒤'}자리부터 ${c.dir === 'ccw' ? '반시계' : '시계'}방향으로 번호가 매겨집니다`;
   const t = TRIPS.find(x => x.id === document.getElementById('sc-trip-id').value);
   const n = (t?.applicants || []).length;
   document.getElementById('sc-preview').innerHTML = `
     <div style="background:var(--bg);border-radius:var(--radius-xs);padding:10px 12px;font-size:12px;line-height:1.7;color:var(--text-sub)">
       총 <b>${L.total}석</b> (신청자 ${n}명${L.total < n ? ` <span style="color:var(--danger);font-weight:700">· ${n - L.total}석 부족</span>` : ''})<br>
-      우현 ${rangeText(L.star)} · 좌현 ${rangeText([...L.port].reverse())} · 선수 ${rangeText(L.bow)}
+      ${L.total ? seatOrderText(L) : ''}
     </div>
     ${L.total ? seatMapHtml({ seating: { ...c, status: 'setup' }, applicants: [] }, false) : ''}`;
 };
@@ -1701,7 +1742,7 @@ window.saveSeatConfig = async function() {
   const t = TRIPS.find(x => x.id === tripId);
   try {
     if (t?.seating) {
-      await updateDoc(doc(db, 'trips', tripId), { 'seating.bow': c.bow, 'seating.port': c.port, 'seating.starboard': c.starboard, 'seating.start': c.start });
+      await updateDoc(doc(db, 'trips', tripId), { 'seating.bow': c.bow, 'seating.port': c.port, 'seating.starboard': c.starboard, 'seating.start': c.start, 'seating.startSide': c.startSide, 'seating.dir': c.dir });
     } else {
       await updateDoc(doc(db, 'trips', tripId), { seating: { ...c, status: 'setup', bowApplicants: [], seats: {} } });
     }
