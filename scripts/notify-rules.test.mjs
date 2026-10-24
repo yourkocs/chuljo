@@ -47,3 +47,13 @@ test('지난 출조·취소 출조는 무시', () => {
   assert.equal(plan([{ ...base, id: 't', date: '2026-10-10', createdAt: NOW }]).length, 0);
   assert.equal(plan([{ ...base, id: 't', status: 'cancelled', createdAt: NOW, closed: true }]).length, 0);
 });
+
+test('자리배치: 선수 지원 시작·추첨 완료는 신청자에게 한 번씩', () => {
+  const t = { ...base, id: 't', notified: { open: 1 }, applicants: [{ kakao: 'u1' }, { kakao: 'u3' }] };
+  const r = plan([{ ...t, seating: { status: 'recruiting', bow: 2 } }]);
+  assert.equal(r.length, 1); assert.equal(r[0].flag, 'bowOpen'); assert.deepEqual(r[0].recipients, ['u1', 'u3']);
+  const d = plan([{ ...t, notified: { open: 1, bowOpen: 1 }, seating: { status: 'drawn' } }]);
+  assert.equal(d.length, 1); assert.equal(d[0].flag, 'seat');
+  assert.equal(plan([{ ...t, notified: { open: 1, bowOpen: 1, seat: 1 }, seating: { status: 'drawn' } }]).length, 0);
+  assert.equal(plan([{ ...t, seating: { status: 'setup' } }]).length, 0);
+});

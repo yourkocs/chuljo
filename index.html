@@ -141,6 +141,24 @@ body{font-family:'Noto Sans KR',sans-serif;background:var(--bg);color:var(--text
 .paid-btn.unpaid{background:var(--bg);color:var(--text-hint);border:.5px solid var(--border)}
 .avatar{width:34px;height:34px;border-radius:50%;background:var(--ocean-light);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:var(--ocean);flex-shrink:0}
 .avatar.mine{background:var(--fish-light);color:var(--fish)}
+/* 🪑 자리배치 */
+.seat-section{background:var(--card);border-radius:var(--radius-sm);border:.5px solid var(--border);margin-bottom:14px;overflow:hidden}
+.seat-head{padding:12px 14px;border-bottom:.5px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:13px;font-weight:700}
+.seat-body{padding:12px 14px}
+.boat{position:relative;margin:4px auto 6px;max-width:300px;background:var(--ocean-light);border:2px solid var(--ocean-mid);border-radius:50% 50% 16px 16px / 70px 70px 16px 16px;padding:26px 10px 14px}
+.boat-label{text-align:center;font-size:10px;font-weight:700;color:var(--ocean-mid);letter-spacing:1px}
+.boat-bow{display:flex;justify-content:center;gap:5px;margin-bottom:10px;flex-wrap:wrap}
+.boat-rows{display:grid;grid-template-columns:1fr 36px 1fr;gap:5px 6px;align-items:center}
+.boat-side-label{display:flex;justify-content:space-between;font-size:10px;font-weight:700;color:var(--ocean-mid);margin:0 4px 4px}
+.seat{min-height:40px;border-radius:8px;background:var(--card);border:1px solid rgba(11,79,108,.2);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:3px 2px;font-size:10px;line-height:1.2;color:var(--text-sub);cursor:default;min-width:50px}
+.seat b{font-size:13px;color:var(--ocean)}
+.seat.seat-empty{background:rgba(255,255,255,.5);border-style:dashed;color:var(--text-hint)}
+.seat.bow{border-color:var(--sand);background:var(--sand-light)}
+.seat.mine{background:var(--fish);border-color:var(--fish);color:#fff}.seat.mine b{color:#fff}
+.seat.editable{cursor:pointer}
+.seat.sel{outline:3px solid var(--danger);outline-offset:1px}
+.seat-name{max-width:58px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.boat-aisle{height:100%;border-left:1px dashed rgba(11,79,108,.2);border-right:1px dashed rgba(11,79,108,.2);min-height:40px}
 /* Chat reveal */
 .chat-reveal{background:var(--fish-light);border:1.5px dashed var(--fish);border-radius:var(--radius-sm);padding:16px;margin-bottom:14px;text-align:center}
 /* Buttons */
@@ -751,6 +769,29 @@ textarea.form-input{resize:vertical;min-height:110px;line-height:1.6}
   </div>
 </div>
 
+<!-- 🪑 자리배치 설정 모달 -->
+<div class="modal-overlay" id="seat-config-modal">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title"><i class="ti ti-armchair"></i> 자리배치 설정</div>
+    <input type="hidden" id="sc-trip-id">
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">선수 자리 수</label><input class="form-input" type="number" min="0" id="sc-bow" oninput="updateSeatPreview(true)"></div>
+      <div class="form-group"><label class="form-label">우현 시작번호</label><input class="form-input" type="number" min="1" id="sc-start" oninput="updateSeatPreview(false)"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">좌현 자리 수</label><input class="form-input" type="number" min="0" id="sc-port" oninput="updateSeatPreview(true)"></div>
+      <div class="form-group"><label class="form-label">우현 자리 수</label><input class="form-input" type="number" min="0" id="sc-star" oninput="updateSeatPreview(true)"></div>
+    </div>
+    <div class="form-hint" style="margin:-4px 0 10px">우현 앞자리부터 시계방향(우현 → 좌현 → 선수)으로 번호가 매겨집니다</div>
+    <div id="sc-preview" style="margin-bottom:14px"></div>
+    <div style="display:flex;gap:10px">
+      <button class="btn btn-primary" style="flex:1" onclick="saveSeatConfig()"><i class="ti ti-check"></i> 저장</button>
+      <button class="btn btn-outline" style="flex:0 0 72px;border:.5px solid var(--border)" onclick="closeModal('seat-config-modal')">취소</button>
+    </div>
+  </div>
+</div>
+
 <!-- 👥 신청자 직접 등록 모달 -->
 <div class="modal-overlay" id="add-applicant-modal">
   <div class="modal">
@@ -787,7 +828,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
 import {
   getFirestore, collection, doc,
   addDoc, updateDoc, deleteDoc, getDoc, setDoc,
-  onSnapshot, query, orderBy, where, serverTimestamp, getDocs, runTransaction
+  onSnapshot, query, orderBy, where, serverTimestamp, getDocs, runTransaction, arrayUnion, arrayRemove
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 import { getMessaging, getToken, onMessage } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-messaging.js";
 import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
@@ -1442,6 +1483,7 @@ function renderDetail(id) {
       <div style="font-size:11px;font-weight:700;color:#7A4F00;margin-bottom:5px"><i class="ti ti-notes"></i> 특이사항 / 결과 메모</div>
       <div style="font-size:13px;color:var(--text-sub);white-space:pre-line">${t.result}</div>
     </div>` : ''}    ${btnHtml}
+    ${renderSeatingSection(t)}
     <div class="applicants-section">
       <div class="applicants-header">
         <span>신청자 명단</span>
@@ -1469,6 +1511,279 @@ function mutateApplicants(tripId, fn) {
     return updated;
   });
 }
+
+/* ── 🪑 자리배치 ─────────────────────────────────
+ * trips/{id}.seating = {
+ *   bow, port, starboard, start,          // 선수/좌현/우현 자리 수, 우현 시작번호
+ *   status: 'setup' | 'recruiting' | 'drawn',
+ *   bowApplicants: [kakao],               // 선수 지원자
+ *   seats: { '<번호>': kakao },           // 배정 결과
+ *   bowWinners: [kakao], drawnAt, drawnBy
+ * }
+ * 번호: 우현 앞→뒤, 좌현 뒤→앞, 선수 왼→오 순서(시계방향)로 우현 시작번호부터 매기고, 총 자리 수를 넘으면 1번으로 돌아감
+ */
+function seatLayout(c) {
+  const B = +c.bow || 0, P = +c.port || 0, S = +c.starboard || 0, T = B + P + S;
+  const start = +c.start || B + 1;
+  const num = i => T ? ((start - 1 + i) % T + T) % T + 1 : 0;
+  const star = Array.from({ length: S }, (_, i) => num(i));                // 앞→뒤
+  const portCw = Array.from({ length: P }, (_, i) => num(S + i));          // 뒤→앞 (시계방향)
+  const bow = Array.from({ length: B }, (_, i) => num(S + P + i));         // 왼→오
+  return { total: T, star, port: [...portCw].reverse() /* 앞→뒤 */, bow };
+}
+function seatSideLabel(c, n) {
+  const L = seatLayout(c);
+  return L.bow.includes(n) ? '선수' : L.star.includes(n) ? '우현' : L.port.includes(n) ? '좌현' : '';
+}
+function rangeText(nums) {
+  if (!nums.length) return '-';
+  return nums.length === 1 ? `${nums[0]}번` : `${nums[0]}~${nums[nums.length - 1]}번`;
+}
+// 공정한 무작위 섞기 (crypto 난수)
+function shuffle(arr) {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const r = new Uint32Array(1); crypto.getRandomValues(r);
+    const j = r[0] % (i + 1);
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+// 추첨: 선수 지원자 중 선수 자리 수만큼 당첨 → 선수석 배정, 나머지 전원 일반석(좌·우현) 무작위 배정
+function drawSeating(c, participants, bowApplicants) {
+  const L = seatLayout(c);
+  const pset = new Set(participants);
+  const cand = shuffle([...new Set(bowApplicants)].filter(k => pset.has(k)));
+  const winners = cand.slice(0, L.bow.length);
+  const bowSeats = shuffle(L.bow);
+  const seats = {};
+  winners.forEach((k, i) => { seats[bowSeats[i]] = k; });
+  const winSet = new Set(winners);
+  const others = shuffle(participants.filter(k => !winSet.has(k)));
+  // 일반석 부족 시 남은 선수석으로 채움
+  const general = [...shuffle([...L.star, ...L.port]), ...shuffle(bowSeats.slice(winners.length))];
+  others.forEach((k, i) => { if (i < general.length) seats[general[i]] = k; });
+  return { seats, winners };
+}
+
+let seatEdit = { tripId: null, sel: null };   // 운영자 자리 수정 모드 (sel: {seat:n} | {kakao})
+
+function renderSeatingSection(t) {
+  const st = t.seating;
+  const applicants = t.applicants || [];
+  const mine = isMine(t);
+  if (!ME?.isAdmin && !(st && mine)) return '';
+  if (!st) {
+    return `<div class="seat-section"><div class="seat-head"><span>🪑 자리배치</span>
+      <button class="btn btn-primary btn-sm" onclick="openSeatConfig('${t.id}')"><i class="ti ti-settings"></i> 자리 설정</button></div></div>`;
+  }
+  const L = seatLayout(st);
+  const statusBadge = { setup: ['준비중', 'var(--text-hint)'], recruiting: ['선수 지원 중', 'var(--sand)'], drawn: ['추첨 완료', 'var(--fish)'] }[st.status] || ['', ''];
+  const head = `<div class="seat-head"><span>🪑 자리배치 <span style="font-size:11px;color:${statusBadge[1]};margin-left:4px">● ${statusBadge[0]}</span></span>
+    <span style="font-size:11px;color:var(--text-hint);font-weight:600">선수 ${L.bow.length} · 좌현 ${L.port.length} · 우현 ${L.star.length}</span></div>`;
+  const nameOf = k => applicants.find(a => a.kakao === k)?.name;
+  const bowApps = (st.bowApplicants || []).filter(k => nameOf(k));
+  let body = '';
+
+  if (st.status === 'setup') {
+    body = ME?.isAdmin
+      ? `${seatMapHtml(t, false)}
+         <div style="display:flex;gap:8px;margin-top:10px">
+           <button class="btn btn-outline btn-sm" style="flex:0 0 auto;border:.5px solid var(--border)" onclick="openSeatConfig('${t.id}')"><i class="ti ti-settings"></i> 설정 수정</button>
+           <button class="btn btn-primary btn-sm" style="flex:1" onclick="startBowRecruit('${t.id}')"><i class="ti ti-player-play"></i> 자리배치 시작 (선수 지원 받기)</button>
+         </div>`
+      : `<div style="font-size:12px;color:var(--text-hint);text-align:center;padding:6px">운영자가 자리배치를 준비 중입니다</div>`;
+  } else if (st.status === 'recruiting') {
+    const iApplied = bowApps.includes(ME?.kakao);
+    body = `<div style="background:var(--sand-light);border-radius:var(--radius-xs);padding:11px 13px;margin-bottom:10px;font-size:12px;color:#7A4F00;line-height:1.6">
+        선수 자리 <b>${L.bow.length}석</b> · 지원 <b>${bowApps.length}명</b><br>
+        추첨 시 지원자 중 ${L.bow.length}명이 선수 자리에 당첨되고, 나머지는 일반 자리(좌·우현)에 무작위 배정됩니다.
+      </div>
+      ${mine ? (iApplied
+        ? `<button class="btn btn-outline" style="border:1.5px solid var(--sand);margin-bottom:10px" onclick="toggleBowApply('${t.id}',false)"><i class="ti ti-x"></i> 선수 지원 취소</button>`
+        : `<button class="btn btn-primary" style="background:var(--sand);margin-bottom:10px" onclick="toggleBowApply('${t.id}',true)"><i class="ti ti-flag"></i> 선수 자리 지원하기</button>`) : ''}
+      ${ME?.isAdmin ? `
+        <div style="font-size:11px;font-weight:700;color:var(--text-sub);margin-bottom:6px">선수 지원자</div>
+        <div style="margin-bottom:10px">${bowApps.map(k => `<span class="chip" style="background:var(--sand-light);color:#7A4F00">${nameOf(k)}</span>`).join('') || '<span style="font-size:12px;color:var(--text-hint)">아직 없습니다</span>'}</div>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-outline btn-sm" style="flex:0 0 auto;border:.5px solid var(--border)" onclick="openSeatConfig('${t.id}')"><i class="ti ti-settings"></i> 설정</button>
+          <button class="btn btn-primary btn-sm" style="flex:1" onclick="runSeatDraw('${t.id}')"><i class="ti ti-arrows-shuffle"></i> 추첨하기 (${applicants.length}명)</button>
+        </div>` : ''}`;
+  } else if (st.status === 'drawn') {
+    const seats = st.seats || {};
+    const myNo = Object.keys(seats).find(n => seats[n] === ME?.kakao);
+    const assigned = new Set(Object.values(seats));
+    const unassigned = applicants.filter(a => !assigned.has(a.kakao));
+    const editing = ME?.isAdmin && seatEdit.tripId === t.id;
+    body = `${mine ? `<div style="background:var(--fish-light);border-radius:var(--radius-xs);padding:11px 13px;margin-bottom:10px;text-align:center">
+        ${myNo ? `<div style="font-size:12px;color:var(--fish);font-weight:700">내 자리</div>
+          <div style="font-size:24px;font-weight:900;color:var(--fish)">${myNo}번 <span style="font-size:14px">(${seatSideLabel(st, +myNo)})</span></div>`
+        : `<div style="font-size:12px;color:var(--text-sub)">아직 자리가 배정되지 않았습니다. 운영자에게 문의해주세요</div>`}
+      </div>` : ''}
+      ${editing ? `<div style="font-size:11px;color:var(--danger);font-weight:700;margin-bottom:6px;text-align:center">✏️ 바꿀 두 자리를 차례로 누르세요 (빈자리로 이동 가능)</div>` : ''}
+      ${seatMapHtml(t, editing)}
+      ${unassigned.length ? `<div style="margin-top:10px">
+        <div style="font-size:11px;font-weight:700;color:var(--danger);margin-bottom:6px">미배정 ${unassigned.length}명${editing ? ' — 이름을 누르고 빈자리를 누르세요' : ''}</div>
+        ${unassigned.map(a => `<span class="chip" style="${editing ? 'cursor:pointer;' : ''}${seatEdit.sel?.kakao === a.kakao ? 'outline:2px solid var(--danger);' : ''}" ${editing ? `onclick="seatTapPerson('${t.id}','${a.kakao}')"` : ''}>${a.name}</span>`).join('')}
+      </div>` : ''}
+      <div style="font-size:10px;color:var(--text-hint);margin-top:8px;text-align:center">추첨 ${st.drawnAt ? new Date(st.drawnAt).toLocaleString('ko-KR') : ''} · 선수 지원 ${bowApps.length}명 중 ${(st.bowWinners || []).length}명 당첨</div>
+      ${ME?.isAdmin ? `<div style="display:flex;gap:6px;margin-top:10px">
+        <button class="btn btn-sm ${editing ? 'btn-danger' : 'btn-primary'}" style="flex:1" onclick="toggleSeatEdit('${t.id}')"><i class="ti ti-${editing ? 'check' : 'edit'}"></i> ${editing ? '수정 완료' : '자리 수정'}</button>
+        <button class="btn btn-outline btn-sm" style="border:.5px solid var(--border)" onclick="runSeatDraw('${t.id}',true)"><i class="ti ti-arrows-shuffle"></i> 재추첨</button>
+        <button class="btn btn-outline btn-sm" style="border:.5px solid var(--border);color:var(--danger)" onclick="resetSeating('${t.id}')"><i class="ti ti-refresh"></i> 초기화</button>
+      </div>` : ''}`;
+  }
+  return `<div class="seat-section">${head}<div class="seat-body">${body}</div></div>`;
+}
+
+function seatMapHtml(t, editing) {
+  const st = t.seating, L = seatLayout(st);
+  const seats = st.status === 'drawn' ? (st.seats || {}) : {};
+  const applicants = t.applicants || [];
+  const winners = new Set(st.bowWinners || []);
+  const cell = (n, isBow) => {
+    if (n == null) return '<div></div>';
+    const k = seats[n];
+    const a = k && applicants.find(x => x.kakao === k);
+    const cls = ['seat', a ? '' : 'seat-empty', isBow ? 'bow' : '', a && k === ME?.kakao ? 'mine' : '',
+      editing ? 'editable' : '', editing && seatEdit.sel?.seat === n ? 'sel' : ''].join(' ');
+    return `<div class="${cls}" ${editing ? `onclick="seatTapSeat('${t.id}',${n})"` : ''}>
+      <b>${n}</b>${a ? `<span class="seat-name">${a.name}${winners.has(k) && isBow ? '' : ''}</span>` : (st.status === 'drawn' ? '<span>빈자리</span>' : '')}</div>`;
+  };
+  const rows = Math.max(L.port.length, L.star.length);
+  let grid = '';
+  for (let i = 0; i < rows; i++) grid += cell(L.port[i], false) + '<div class="boat-aisle"></div>' + cell(L.star[i], false);
+  return `<div class="boat">
+    <div class="boat-label" style="margin-top:-14px;margin-bottom:6px">▲ 선수</div>
+    ${L.bow.length ? `<div class="boat-bow">${L.bow.map(n => cell(n, true)).join('')}</div>` : ''}
+    <div class="boat-side-label"><span>좌현</span><span>우현</span></div>
+    <div class="boat-rows">${grid}</div>
+    <div class="boat-label" style="margin-top:8px">선미</div>
+  </div>`;
+}
+
+/* 설정 모달 */
+window.openSeatConfig = function(tripId) {
+  const t = TRIPS.find(x => x.id === tripId); if (!t) return;
+  if (t.seating?.status === 'drawn') { showToast('⚠️ 추첨 후에는 초기화한 뒤 설정을 바꿀 수 있습니다'); return; }
+  const c = t.seating || { bow: 2, port: Math.ceil(((t.capacity || 10) - 2) / 2), starboard: Math.floor(((t.capacity || 10) - 2) / 2) };
+  document.getElementById('sc-trip-id').value = tripId;
+  document.getElementById('sc-bow').value = c.bow ?? 0;
+  document.getElementById('sc-port').value = c.port ?? 0;
+  document.getElementById('sc-star').value = c.starboard ?? 0;
+  document.getElementById('sc-start').value = c.start || (+c.bow || 0) + 1;
+  document.getElementById('sc-start').dataset.auto = c.start && c.start !== (+c.bow || 0) + 1 ? '' : '1';
+  updateSeatPreview(false);
+  document.getElementById('seat-config-modal').classList.add('open');
+};
+function readSeatConfig() {
+  const v = id => Math.max(0, parseInt(document.getElementById(id).value) || 0);
+  return { bow: v('sc-bow'), port: v('sc-port'), starboard: v('sc-star'), start: Math.max(1, v('sc-start')) };
+}
+window.updateSeatPreview = function(countChanged) {
+  const startEl = document.getElementById('sc-start');
+  if (!countChanged) startEl.dataset.auto = '';            // 시작번호를 직접 고치면 자동 계산 중지
+  else if (startEl.dataset.auto) startEl.value = (parseInt(document.getElementById('sc-bow').value) || 0) + 1;
+  const c = readSeatConfig(), L = seatLayout(c);
+  const t = TRIPS.find(x => x.id === document.getElementById('sc-trip-id').value);
+  const n = (t?.applicants || []).length;
+  document.getElementById('sc-preview').innerHTML = `
+    <div style="background:var(--bg);border-radius:var(--radius-xs);padding:10px 12px;font-size:12px;line-height:1.7;color:var(--text-sub)">
+      총 <b>${L.total}석</b> (신청자 ${n}명${L.total < n ? ` <span style="color:var(--danger);font-weight:700">· ${n - L.total}석 부족</span>` : ''})<br>
+      우현 ${rangeText(L.star)} · 좌현 ${rangeText([...L.port].reverse())} · 선수 ${rangeText(L.bow)}
+    </div>
+    ${L.total ? seatMapHtml({ seating: { ...c, status: 'setup' }, applicants: [] }, false) : ''}`;
+};
+window.saveSeatConfig = async function() {
+  const tripId = document.getElementById('sc-trip-id').value;
+  const c = readSeatConfig();
+  if (!(c.bow + c.port + c.starboard)) { showToast('⚠️ 자리 수를 입력해주세요'); return; }
+  const t = TRIPS.find(x => x.id === tripId);
+  try {
+    if (t?.seating) {
+      await updateDoc(doc(db, 'trips', tripId), { 'seating.bow': c.bow, 'seating.port': c.port, 'seating.starboard': c.starboard, 'seating.start': c.start });
+    } else {
+      await updateDoc(doc(db, 'trips', tripId), { seating: { ...c, status: 'setup', bowApplicants: [], seats: {} } });
+    }
+    closeModal('seat-config-modal');
+    showToast('✅ 자리 설정이 저장되었습니다');
+  } catch (e) { showToast('⚠️ 저장 중 오류 발생'); console.error(e); }
+};
+
+/* 진행 */
+window.startBowRecruit = async function(tripId) {
+  if (!confirm('자리배치를 시작할까요?\n신청자들이 선수 자리에 지원할 수 있게 됩니다.')) return;
+  try {
+    await updateDoc(doc(db, 'trips', tripId), { 'seating.status': 'recruiting' });
+    showToast('✅ 선수 지원을 시작했습니다');
+  } catch (e) { showToast('⚠️ 오류 발생'); console.error(e); }
+};
+window.toggleBowApply = async function(tripId, on) {
+  const t = TRIPS.find(x => x.id === tripId);
+  if (t?.seating?.status !== 'recruiting') { showToast('⚠️ 지금은 선수 지원 기간이 아닙니다'); return; }
+  try {
+    await updateDoc(doc(db, 'trips', tripId), { 'seating.bowApplicants': on ? arrayUnion(ME.kakao) : arrayRemove(ME.kakao) });
+    showToast(on ? '✅ 선수 자리에 지원했습니다' : '선수 지원을 취소했습니다');
+  } catch (e) { showToast('⚠️ 오류 발생'); console.error(e); }
+};
+window.runSeatDraw = async function(tripId, redraw) {
+  const t = TRIPS.find(x => x.id === tripId); if (!t) return;
+  const n = (t.applicants || []).length;
+  if (!n) { showToast('⚠️ 신청자가 없습니다'); return; }
+  if (!confirm(redraw ? '전체 자리를 다시 추첨할까요?\n수정한 자리배치는 모두 사라집니다.' : `신청자 ${n}명의 자리를 추첨할까요?\n추첨 후에는 선수 지원이 마감됩니다.`)) return;
+  const ref = doc(db, 'trips', tripId);
+  try {
+    await runTransaction(db, async tx => {
+      const snap = await tx.get(ref);
+      const d = snap.data(), st = d.seating;
+      if (!st) throw new Error('NO_SEATING');
+      const { seats, winners } = drawSeating(st, (d.applicants || []).map(a => a.kakao), st.bowApplicants || []);
+      tx.update(ref, { 'seating.seats': seats, 'seating.bowWinners': winners, 'seating.status': 'drawn',
+        'seating.drawnAt': Date.now(), 'seating.drawnBy': ME.kakao });
+    });
+    showToast('🎲 자리 추첨이 완료되었습니다');
+  } catch (e) { showToast('⚠️ 추첨 중 오류 발생'); console.error(e); }
+};
+window.resetSeating = async function(tripId) {
+  if (!confirm('자리배치를 초기화할까요?\n선수 지원자와 추첨 결과가 모두 삭제되고 준비 단계로 돌아갑니다.')) return;
+  try {
+    await updateDoc(doc(db, 'trips', tripId), { 'seating.status': 'setup', 'seating.seats': {}, 'seating.bowApplicants': [], 'seating.bowWinners': [] });
+    seatEdit = { tripId: null, sel: null };
+    showToast('자리배치를 초기화했습니다');
+  } catch (e) { showToast('⚠️ 오류 발생'); console.error(e); }
+};
+
+/* 운영자 자리 수정: 두 자리를 눌러 교환 / 미배정자를 눌러 빈자리에 배치 */
+window.toggleSeatEdit = function(tripId) {
+  seatEdit = seatEdit.tripId === tripId ? { tripId: null, sel: null } : { tripId, sel: null };
+  renderDetail(tripId);
+};
+window.seatTapPerson = function(tripId, kakao) {
+  seatEdit.sel = seatEdit.sel?.kakao === kakao ? null : { kakao };
+  renderDetail(tripId);
+};
+window.seatTapSeat = async function(tripId, n) {
+  const sel = seatEdit.sel;
+  if (!sel) { seatEdit.sel = { seat: n }; renderDetail(tripId); return; }
+  seatEdit.sel = null;
+  if (sel.seat === n) { renderDetail(tripId); return; }
+  const ref = doc(db, 'trips', tripId);
+  try {
+    await runTransaction(db, async tx => {
+      const seats = { ...((await tx.get(ref)).data().seating?.seats || {}) };
+      if (sel.kakao) {                       // 미배정자 → 선택한 자리 (기존 사람은 미배정으로)
+        for (const k of Object.keys(seats)) if (seats[k] === sel.kakao) delete seats[k];
+        seats[n] = sel.kakao;
+      } else {                               // 두 자리 교환
+        const a = seats[sel.seat], b = seats[n];
+        delete seats[sel.seat]; delete seats[n];
+        if (b) seats[sel.seat] = b;
+        if (a) seats[n] = a;
+      }
+      tx.update(ref, { 'seating.seats': seats });
+    });
+  } catch (e) { showToast('⚠️ 자리 변경 중 오류 발생'); console.error(e); renderDetail(tripId); }
+};
 
 /* ── 입금 여부 토글 ──────────────────────────── */
 window.togglePaid = async function(tripId, kakao, paidVal) {
@@ -2510,7 +2825,7 @@ function showKakaoBrowserBanner() {
 /* ── Modal outside click ─────────────────────── */
 // 새 출조 등록 모달은 실수로 닫히지 않도록 외부 클릭 비활성화
 // 회원 등록, 프로필 수정 모달만 외부 클릭 시 닫힘
-['add-member-modal','edit-profile-modal','push-modal','add-applicant-modal','award-modal','attend-modal'].forEach(id=>{
+['add-member-modal','edit-profile-modal','push-modal','add-applicant-modal','award-modal','attend-modal','seat-config-modal'].forEach(id=>{
   document.getElementById(id).addEventListener('click',function(e){if(e.target===this)closeModal(id);});
 });
 

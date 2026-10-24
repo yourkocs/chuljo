@@ -67,6 +67,23 @@ export function planNotifications(trips, users, now, { bootstrap = false } = {})
         body: `${t.title} · 남은 자리 ${Math.max(0, (t.capacity || 0) - applicants.size)}석. 마감 전에 신청하세요!`,
       });
     }
+
+    // ④ 자리배치: 선수 지원 시작 / 추첨 완료 → 신청자
+    const seatTo = users.filter(u => applicants.has(u.kakao) && prefOn(u, 'confirm')).map(u => u.kakao);
+    if (!sent.bowOpen && t.seating?.status === 'recruiting') {
+      out.push({
+        tripId: t.id, flag: 'bowOpen', url, silent: bootstrap, recipients: seatTo,
+        title: '🪑 선수 자리 지원 시작',
+        body: `${t.title} 자리배치가 시작되었습니다. 선수 자리를 원하시면 추첨 전에 지원하세요! (선수 ${t.seating.bow || 0}석)`,
+      });
+    }
+    if (!sent.seat && t.seating?.status === 'drawn') {
+      out.push({
+        tripId: t.id, flag: 'seat', url, silent: bootstrap, recipients: seatTo,
+        title: '🎲 자리 추첨 완료',
+        body: `${t.title} 자리 추첨이 끝났습니다. 내 자리 번호를 확인하세요!`,
+      });
+    }
   }
   return out;
 }
