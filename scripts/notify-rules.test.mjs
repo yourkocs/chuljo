@@ -57,3 +57,18 @@ test('자리배치: 선수 지원 시작·추첨 완료는 신청자에게 한 �
   assert.equal(plan([{ ...t, notified: { open: 1, bowOpen: 1, seat: 1 }, seating: { status: 'drawn' } }]).length, 0);
   assert.equal(plan([{ ...t, seating: { status: 'setup' } }]).length, 0);
 });
+
+test('후기: 지난 출조도 발송, 미작성자에게만, 하루 뒤 재알림, 상위자 장비 설문', () => {
+  const t = { ...base, id: 't', date: '2026-10-05', notified: { open: 1, closed: 1 },
+    applicants: [{ kakao: 'u1' }, { kakao: 'u3' }], reviews: { u3: { ship: { facility: 5 } } },
+    review: { status: 'open', openedAt: NOW - H, closeAt: NOW + 6 * 24 * H } };
+  const [p] = plan([t]);
+  assert.equal(p.flag, 'review'); assert.deepEqual(p.recipients, ['u1']); assert.equal(p.url, '/chuljo/?review=t');
+  assert.equal(plan([{ ...t, notified: { review: 1 } }]).length, 0); // 하루 안 됨
+  const [r2] = plan([{ ...t, notified: { review: 1 }, review: { ...t.review, openedAt: NOW - 25 * H } }]);
+  assert.equal(r2.flag, 'review2'); assert.deepEqual(r2.recipients, ['u1']);
+  assert.equal(plan([{ ...t, review: { ...t.review, closeAt: NOW - 1 } }]).length, 0); // 마감
+  const [tk] = plan([{ ...t, notified: { review: 1, review2: 1 }, review: { ...t.review, top: [{ kakao: 'u3', rank: 1 }, { kakao: 'u1', rank: 2 }] },
+    reviews: { u3: { ship: {}, tackle: { rod: 'x' } } } }]);
+  assert.equal(tk.flag, 'tackle'); assert.deepEqual(tk.recipients, ['u1']);
+});

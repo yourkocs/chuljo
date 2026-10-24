@@ -31,8 +31,43 @@ export function planNotifications(trips, users, now, { bootstrap = false } = {})
 
   for (const t of trips) {
     const sent = t.notified || {};
-    if (isPast(t, now) || isCancelled(t)) continue;
     const applicants = new Set((t.applicants || []).map(a => a.kakao));
+
+    // ⑤ 후기 설문 (출조일이 지난 뒤에도 발송) → 링크 누르면 바로 설문 화면
+    const rv = t.review;
+    if (rv && !isCancelled(t)) {
+      const rvUrl = `/chuljo/?review=${t.id}`;
+      const reviewed = k => !!t.reviews?.[k]?.ship;
+      const reviewOpen = rv.status === 'open' && now < (rv.closeAt || 0);
+      if (reviewOpen && !sent.review) {
+        out.push({
+          tripId: t.id, flag: 'review', url: rvUrl, silent: bootstrap,
+          recipients: users.filter(u => applicants.has(u.kakao) && !reviewed(u.kakao) && prefOn(u, 'confirm')).map(u => u.kakao),
+          title: '📝 출조 후기를 남겨주세요',
+          body: `${t.title} 어떠셨나요? 선박·조과·운영 후기 2분이면 끝나요!`,
+        });
+      }
+      // 하루 지나도 안 쓴 사람에게 한 번 더
+      if (reviewOpen && sent.review && !sent.review2 && now - (rv.openedAt || 0) >= DAY) {
+        out.push({
+          tripId: t.id, flag: 'review2', url: rvUrl, silent: bootstrap,
+          recipients: users.filter(u => applicants.has(u.kakao) && !reviewed(u.kakao) && prefOn(u, 'confirm')).map(u => u.kakao),
+          title: '📝 후기 마감 전 참여 부탁드려요',
+          body: `${t.title} 후기가 데이터로 쌓여 다음 출조 선박 선정에 쓰입니다. 2분만 내주세요!`,
+        });
+      }
+      // 조과 순위 확정 → 상위자에게 장비 설문 요청
+      if (rv.top?.length && !sent.tackle) {
+        out.push({
+          tripId: t.id, flag: 'tackle', url: rvUrl, silent: bootstrap,
+          recipients: rv.top.map(x => x.kakao).filter(k => !t.reviews?.[k]?.tackle && users.some(u => u.kakao === k)),
+          title: '🏆 조과 상위 축하드려요!',
+          body: `${t.title} 조과 상위에 선정되셨어요. 로드·릴·합사·에기·액션 장비 설문을 부탁드려요!`,
+        });
+      }
+    }
+
+    if (isPast(t, now) || isCancelled(t)) continue;
     const url = `/chuljo/?trip=${t.id}`;
 
     // ① 새 출조 공개 → 전체 회원 (등록자 제외)

@@ -16,6 +16,7 @@ window.openExternalBrowser = function() {
 (function() {
   if (!/KAKAOTALK/i.test(navigator.userAgent)) return;
   if (/[?&](code|error)=/.test(location.search)) return; // 카카오 로그인 콜백은 그대로 처리
+  if (/[?&]review=/.test(location.search)) return;        // 후기 설문 링크는 카톡 안에서 바로 작성
   if (sessionStorage.getItem('stay_in_kakao')) return;    // 사용자가 '카톡에서 계속' 선택
   window.__kakaoRedirected = true;
   openExternalBrowser();
@@ -159,6 +160,18 @@ body{font-family:'Noto Sans KR',sans-serif;background:var(--bg);color:var(--text
 .seat.sel{outline:3px solid var(--danger);outline-offset:1px}
 .seat-name{max-width:58px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .boat-aisle{height:100%;border-left:1px dashed rgba(11,79,108,.2);border-right:1px dashed rgba(11,79,108,.2);min-height:40px}
+/* 📝 후기 */
+.rv-card{background:var(--card);border-radius:var(--radius-sm);border:.5px solid var(--border);padding:12px 14px;margin-bottom:10px}
+.rv-title{font-size:14px;font-weight:800;margin-bottom:8px}
+.rv-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:5px 0;font-size:13px}
+.rv-stars{display:flex;gap:2px}
+.rv-stars button{border:none;background:none;font-size:26px;line-height:1;color:rgba(0,0,0,.15);cursor:pointer;padding:0 1px}
+.rv-stars button.on{color:#F5A623}
+.rv-chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:6px}
+.rv-chip{border:1px solid var(--border);background:var(--bg);color:var(--text-sub);border-radius:20px;padding:6px 12px;font-size:12px;font-weight:700;font-family:inherit;cursor:pointer}
+.rv-chip.on{background:var(--ocean);border-color:var(--ocean);color:#fff}
+.rv-num{width:70px;display:inline-block;padding:6px 8px;text-align:right}
+.sec-title{font-size:15px;font-weight:800;margin-bottom:10px}
 /* Chat reveal */
 .chat-reveal{background:var(--fish-light);border:1.5px dashed var(--fish);border-radius:var(--radius-sm);padding:16px;margin-bottom:14px;text-align:center}
 /* Buttons */
@@ -383,6 +396,7 @@ textarea.form-input{resize:vertical;min-height:110px;line-height:1.6}
         <button class="tab-btn2" id="htab-closed" onclick="switchHomeTab('closed')">✅ 모집완료</button>
         <button class="tab-btn2" id="htab-past" onclick="switchHomeTab('past')">📋 출조완료</button>
       </div>
+      <div id="boats-entry"></div>
       <div id="trip-list"></div>
     </div>
 
@@ -468,6 +482,11 @@ textarea.form-input{resize:vertical;min-height:110px;line-height:1.6}
     </div>
 
     <!-- 프로필 -->
+    <!-- 후기 설문/결과 -->
+    <div id="page-review" class="page"><div id="review-content"></div></div>
+    <!-- 선박별 후기 -->
+    <div id="page-boats" class="page"><div id="boats-content"></div></div>
+
     <div id="page-profile" class="page">
       <div class="profile-header">
         <div style="width:64px;height:64px;border-radius:50%;background:rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center;font-size:26px;font-weight:800;color:#fff;margin:0 auto 10px" id="profile-avatar">?</div>
@@ -543,6 +562,7 @@ textarea.form-input{resize:vertical;min-height:110px;line-height:1.6}
       <div class="form-group"><label class="form-label">출발 시간</label><input class="form-input" type="time" id="f-time" value="05:00"></div>
     </div>
     <div class="form-group"><label class="form-label">선착장 / 장소 *</label><input class="form-input" id="f-location" placeholder="예) 인천 연안부두 3번 선착장"></div>
+    <div class="form-group"><label class="form-label">선박명 <span style="color:var(--text-hint);font-weight:400">(후기 선박별 집계용)</span></label><input class="form-input" id="f-boat" placeholder="예) 영흥 뉴피싱호"></div>
     <div class="form-row">
       <div class="form-group"><label class="form-label">모집 정원</label><input class="form-input" type="number" id="f-capacity" value="10" min="1"></div>
       <div class="form-group"><label class="form-label">1인 비용 (원)</label><input class="form-input" type="number" id="f-cost" value="80000"></div>
@@ -769,6 +789,27 @@ textarea.form-input{resize:vertical;min-height:110px;line-height:1.6}
   </div>
 </div>
 
+<!-- 🏆 조과 순위 확정 모달 -->
+<div class="modal-overlay" id="top-modal">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title"><i class="ti ti-trophy"></i> 조과 순위 확정</div>
+    <input type="hidden" id="top-trip-id">
+    <div class="form-hint" style="margin:-8px 0 12px">후기의 조과(마릿수 → 최대 크기)로 자동 선정했습니다. 필요하면 바꿔주세요. 확정하면 선택된 회원에게 장비 설문 알림이 갑니다.</div>
+    <div class="form-group"><label class="form-label">🥇 장원</label><select class="form-input" id="top-1"></select></div>
+    <div class="form-group"><label class="form-label">🥈 부장원</label><select class="form-input" id="top-2"></select></div>
+    <div class="form-group"><label class="form-label">🥉 3위</label><select class="form-input" id="top-3"></select></div>
+    <div class="form-group"><label class="form-label">4위</label><select class="form-input" id="top-4"></select></div>
+    <label style="display:flex;align-items:center;gap:8px;font-size:13px;margin-bottom:14px;cursor:pointer">
+      <input type="checkbox" id="top-awards" style="width:16px;height:16px"> 장원·부장원·3위를 점수관리 장원 기록에도 반영
+    </label>
+    <div style="display:flex;gap:10px">
+      <button class="btn btn-primary" style="flex:1" onclick="submitTop()"><i class="ti ti-check"></i> 확정</button>
+      <button class="btn btn-outline" style="flex:0 0 72px;border:.5px solid var(--border)" onclick="closeModal('top-modal')">취소</button>
+    </div>
+  </div>
+</div>
+
 <!-- 🪑 자리배치 설정 모달 -->
 <div class="modal-overlay" id="seat-config-modal">
   <div class="modal">
@@ -834,7 +875,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
 import {
   getFirestore, collection, doc,
   addDoc, updateDoc, deleteDoc, getDoc, setDoc,
-  onSnapshot, query, orderBy, where, serverTimestamp, getDocs, runTransaction, arrayUnion, arrayRemove
+  onSnapshot, query, orderBy, where, serverTimestamp, getDocs, runTransaction, arrayUnion, arrayRemove, FieldPath
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 import { getMessaging, getToken, onMessage } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-messaging.js";
 import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
@@ -873,7 +914,10 @@ const ADMIN_CODE = 'fish2024';
 /* ── 초기화 ──────────────────────────────────── */
 // 알림 클릭으로 들어온 경우 (?trip=출조ID) → 로그인 후 해당 출조 상세로 이동
 let pendingTripId = new URLSearchParams(location.search).get('trip');
-if (pendingTripId) history.replaceState({}, document.title, location.pathname);
+// 후기 링크 (?review=출조ID) → 로그인(카카오 리다이렉트 포함) 후 설문 화면으로
+const _rvParam = new URLSearchParams(location.search).get('review');
+if (_rvParam) localStorage.setItem('pending_review', _rvParam);
+if (pendingTripId || _rvParam) history.replaceState({}, document.title, location.pathname);
 
 const now = new Date();
 calYear = now.getFullYear(); calMonth = now.getMonth();
@@ -1072,6 +1116,8 @@ function startSync() {
       if(currentPage==='home') renderAlerts();
       rerender();
       if (pendingTripId && TRIPS.some(t=>t.id===pendingTripId)) { goDetail(pendingTripId); pendingTripId = null; }
+      const pendingReview = localStorage.getItem('pending_review');
+      if (pendingReview && TRIPS.some(t=>t.id===pendingReview)) { localStorage.removeItem('pending_review'); openReview(pendingReview); }
     },
     err => { 
       dot.className = 'sync-dot off'; 
@@ -1102,6 +1148,8 @@ function rerender() {
     const id = document.getElementById('detail-content').dataset.tripId;
     if (id) renderDetail(id);
   }
+  else if (currentPage === 'review') renderReviewPage(false);   // 입력 중인 설문은 유지, 결과만 갱신
+  else if (currentPage === 'boats') renderBoats();
 }
 
 /* ── Helpers ─────────────────────────────────── */
@@ -1228,6 +1276,20 @@ function renderAlerts() {
     });
   }
 
+  // ③-0 후기 작성 요청 — 내가 신청한 출조 중 후기 작성 기간이고 아직 안 쓴 것
+  const reviewTrips = TRIPS.filter(t => isMine(t) && reviewState(t) === 'open' && !myReview(t)?.ship);
+  if (reviewTrips.length > 0) {
+    alerts.push({
+      id: 'review_' + reviewTrips.map(t=>t.id).join('_'),
+      type: 'chat',
+      icon: '📝',
+      title: `출조 후기를 남겨주세요 (${reviewTrips.length}건)`,
+      desc: reviewTrips.map(t=>t.title).join(', ') + ' · 2분이면 끝나요',
+      action: '후기 작성',
+      onClick: () => { openReview(reviewTrips[0].id); }
+    });
+  }
+
   // ③-1 푸시 알림 미설정 유도 (카카오 인앱 브라우저 제외, 한 번 닫으면 7일간 숨김)
   const pushDismissed = localStorage.getItem('push_noti_banner_dismissed');
   const pushDismissedExpiry = pushDismissed ? parseInt(pushDismissed) : 0;
@@ -1332,6 +1394,10 @@ function renderHome() {
   } else {
     list = all.filter(t => isPast(t));
   }
+
+  const boatsEntry = document.getElementById('boats-entry');
+  if (boatsEntry) boatsEntry.innerHTML = homeTab === 'past' && TRIPS.some(t => Object.values(t.reviews||{}).some(rv => rv.ship))
+    ? `<button class="btn btn-outline" style="border:.5px solid var(--border);margin-bottom:10px" onclick="openBoats()"><i class="ti ti-chart-bar"></i> 선박별 후기 · 조과 통계 보기</button>` : '';
 
   const emptyMsg = homeTab==='recruiting' ? '모집 중인 출조가 없습니다'
     : homeTab==='closed' ? '모집 완료된 출조가 없습니다'
@@ -1489,6 +1555,7 @@ function renderDetail(id) {
       <div style="font-size:11px;font-weight:700;color:#7A4F00;margin-bottom:5px"><i class="ti ti-notes"></i> 특이사항 / 결과 메모</div>
       <div style="font-size:13px;color:var(--text-sub);white-space:pre-line">${t.result}</div>
     </div>` : ''}    ${btnHtml}
+    ${renderReviewSection(t)}
     ${renderSeatingSection(t)}
     <div class="applicants-section">
       <div class="applicants-header">
@@ -1517,6 +1584,419 @@ function mutateApplicants(tripId, fn) {
     return updated;
   });
 }
+
+/* ── 📝 출조 후기 설문 ─────────────────────────────
+ * trips/{id}.review  = { status:'open'|'closed', openedAt, closeAt, top:[{rank,kakao,name,count,maxSize}], topAt }
+ * trips/{id}.reviews = { <kakao>: { name, ship:{facility,crew,point}, catch:{species:{어종:마릿수}, maxSize, satisfaction},
+ *                                   ops:{notice,seating,cost}, revisit:'yes'|'mid'|'no', comment, tackle?:{...}, updatedAt } }
+ * 링크: /chuljo/?review=<출조ID>  (카톡 안에서 바로 열림, 로그인 후 설문으로 이동)
+ * 결과는 회원 모두에게 공개, 작성자 이름은 운영자만 표시
+ */
+const REVIEW_DAYS = 7;
+const RV_SHIP = [['facility', '선박 시설·청결'], ['crew', '선장·사무장 친절'], ['point', '포인트 운영']];
+const RV_OPS = [['notice', '공지·모집 진행'], ['seating', '자리배치 공정성'], ['cost', '비용 적정성']];
+const RV_SPECIES = ['쭈꾸미', '갑오징어', '문어', '광어', '우럭', '참돔', '농어', '삼치'];
+const RV_REVISIT = [['yes', '😀 다시 탈래요'], ['mid', '🙂 보통'], ['no', '😕 아니요']];
+const TK_LINE = ['0.4호', '0.5호', '0.6호', '0.8호', '1.0호', '1.2호', '1.5호', '2.0호'];
+const TK_COLORS = ['핑크', '오렌지', '레드', '퍼플', '그린', '블루', '화이트', '야광', '케이무라', '금/은박'];
+const RANK_LABEL = ['장원', '부장원', '3위', '4위'];
+
+const reviewState = t => {
+  const r = t.review;
+  if (!r) return 'none';
+  return r.status === 'open' && Date.now() < (r.closeAt || 0) ? 'open' : 'closed';
+};
+const myReview = t => (t.reviews || {})[ME?.kakao];
+const catchTotal = rv => Object.values(rv?.catch?.species || {}).reduce((s, n) => s + (+n || 0), 0);
+const boatKey = t => (t.boat || '').trim() || (t.location || '').trim() || '미지정';
+const avg = arr => { const v = arr.filter(x => x > 0); return v.length ? v.reduce((a, b) => a + b, 0) / v.length : 0; };
+const stars = v => v ? `★ ${v.toFixed(1)}` : '-';
+const esc = v => String(v ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const reviewLink = id => `${location.origin}/chuljo/?review=${id}`;
+
+// 조과 순위: 총 마릿수 → 최대 크기
+function rankByCatch(t) {
+  return Object.entries(t.reviews || {})
+    .map(([kakao, rv]) => ({ kakao, name: rv.name, count: catchTotal(rv), maxSize: +rv.catch?.maxSize || 0 }))
+    .filter(x => x.count > 0 || x.maxSize > 0)
+    .sort((a, b) => b.count - a.count || b.maxSize - a.maxSize);
+}
+
+function reviewSummary(trips) {
+  const rvs = trips.flatMap(t => Object.values(t.reviews || {}));
+  const species = {};
+  rvs.forEach(rv => Object.entries(rv.catch?.species || {}).forEach(([k, n]) => { species[k] = (species[k] || 0) + (+n || 0); }));
+  const revisit = { yes: 0, mid: 0, no: 0 };
+  rvs.forEach(rv => { if (rv.revisit in revisit) revisit[rv.revisit]++; });
+  return {
+    n: rvs.length,
+    ship: Object.fromEntries(RV_SHIP.map(([k]) => [k, avg(rvs.map(r => +r.ship?.[k]))])),
+    ops: Object.fromEntries(RV_OPS.map(([k]) => [k, avg(rvs.map(r => +r.ops?.[k]))])),
+    satisfaction: avg(rvs.map(r => +r.catch?.satisfaction)),
+    avgCatch: rvs.length ? rvs.reduce((s, r) => s + catchTotal(r), 0) / rvs.length : 0,
+    maxSize: Math.max(0, ...rvs.map(r => +r.catch?.maxSize || 0)),
+    species, revisit,
+  };
+}
+
+/* 상세 화면의 후기 칸 */
+function renderReviewSection(t) {
+  const st = reviewState(t);
+  const mine = isMine(t);
+  const n = Object.keys(t.reviews || {}).length;
+  if (st === 'none' && !(ME?.isAdmin && isPast(t))) return '';
+  const head = `<div class="seat-head"><span>📝 출조 후기 ${st === 'open' ? '<span style="font-size:11px;color:var(--fish);margin-left:4px">● 작성 중</span>' : st === 'closed' ? '<span style="font-size:11px;color:var(--text-hint);margin-left:4px">● 마감</span>' : ''}</span>
+    <span style="font-size:11px;color:var(--text-hint);font-weight:600">${st !== 'none' ? `응답 ${n} / ${(t.applicants || []).length}명` : ''}</span></div>`;
+  let body = '';
+  if (st === 'none') {
+    body = `<div style="font-size:12px;color:var(--text-sub);margin-bottom:10px">선박·조과·운영 후기를 받아 데이터로 모읍니다. 시작하면 신청자에게 알림이 가고, 링크로도 공유할 수 있어요.</div>
+      <button class="btn btn-primary btn-sm" style="width:100%" onclick="startReview('${t.id}')"><i class="ti ti-message-star"></i> 후기 받기 시작 (${REVIEW_DAYS}일간)</button>`;
+  } else {
+    const done = !!myReview(t)?.ship;
+    body = `${mine && st === 'open' ? `<button class="btn ${done ? 'btn-outline' : 'btn-primary'}" style="margin-bottom:8px;${done ? 'border:.5px solid var(--border)' : ''}" onclick="openReview('${t.id}')">
+        <i class="ti ti-${done ? 'edit' : 'pencil'}"></i> ${done ? '내 후기 수정하기' : '후기 작성하기'}</button>` : ''}
+      ${(t.review?.top || []).some(x => x.kakao === ME?.kakao) && !myReview(t)?.tackle ? `<button class="btn btn-primary" style="background:var(--sand);margin-bottom:8px" onclick="openReview('${t.id}')"><i class="ti ti-trophy"></i> 조과 상위! 장비 설문 작성하기</button>` : ''}
+      ${n ? `<button class="btn btn-outline" style="border:.5px solid var(--border);margin-bottom:8px" onclick="openReview('${t.id}')"><i class="ti ti-chart-bar"></i> 후기 결과 보기 (${n}명)</button>` : ''}
+      ${ME?.isAdmin ? `
+        <div style="display:flex;gap:6px;flex-wrap:wrap">
+          <button class="btn btn-outline btn-sm" style="flex:1;border:.5px solid var(--border)" onclick="shareReviewLink('${t.id}')"><i class="ti ti-share"></i> 링크 공유</button>
+          <button class="btn btn-outline btn-sm" style="flex:1;border:.5px solid var(--border)" onclick="copyReviewLink('${t.id}')"><i class="ti ti-copy"></i> 링크 복사</button>
+          ${st === 'open'
+            ? `<button class="btn btn-outline btn-sm" style="border:.5px solid var(--border);color:var(--danger)" onclick="closeReview('${t.id}')">마감</button>`
+            : `<button class="btn btn-outline btn-sm" style="border:.5px solid var(--border)" onclick="startReview('${t.id}')">다시 열기</button>`}
+        </div>
+        <button class="btn btn-sm" style="width:100%;margin-top:6px;background:var(--sand-light);color:#7A4F00;border:none" onclick="openTopModal('${t.id}')">
+          <i class="ti ti-trophy"></i> ${t.review?.top?.length ? '조과 순위 수정' : '조과 순위 확정 → 장비 설문 요청'}</button>` : ''}`;
+  }
+  return `<div class="seat-section">${head}<div class="seat-body">${body}</div></div>`;
+}
+
+window.startReview = async function(tripId) {
+  const t = TRIPS.find(x => x.id === tripId);
+  const reopen = !!t?.review;
+  if (!confirm(reopen ? `후기를 다시 ${REVIEW_DAYS}일간 받을까요?` : `후기 설문을 시작할까요?\n신청자에게 알림이 가고 ${REVIEW_DAYS}일 뒤 자동 마감됩니다.`)) return;
+  const now = Date.now();
+  try {
+    await updateDoc(doc(db, 'trips', tripId), reopen
+      ? { 'review.status': 'open', 'review.closeAt': now + REVIEW_DAYS * 86400000 }
+      : { review: { status: 'open', openedAt: now, closeAt: now + REVIEW_DAYS * 86400000 } });
+    showToast('✅ 후기 설문을 시작했습니다. 링크를 단톡방에 공유해주세요');
+  } catch (e) { showToast('⚠️ 오류 발생'); console.error(e); }
+};
+window.closeReview = async function(tripId) {
+  if (!confirm('후기 설문을 마감할까요?')) return;
+  try { await updateDoc(doc(db, 'trips', tripId), { 'review.status': 'closed' }); showToast('후기 설문을 마감했습니다'); }
+  catch (e) { showToast('⚠️ 오류 발생'); console.error(e); }
+};
+window.copyReviewLink = function(tripId) {
+  const t = TRIPS.find(x => x.id === tripId);
+  const text = `📝 [${t?.title || '출조'}] 후기 설문에 참여해주세요! (2분)\n${reviewLink(tripId)}`;
+  (navigator.clipboard ? navigator.clipboard.writeText(text) : Promise.reject())
+    .then(() => showToast('✅ 링크가 복사되었습니다. 단톡방에 붙여넣으세요'))
+    .catch(() => prompt('아래 내용을 복사하세요', text));
+};
+window.shareReviewLink = function(tripId) {
+  const t = TRIPS.find(x => x.id === tripId);
+  if (navigator.share) {
+    navigator.share({ title: '출조 후기 설문', text: `📝 [${t?.title || '출조'}] 후기 설문에 참여해주세요! (2분)`, url: reviewLink(tripId) }).catch(() => {});
+  } else copyReviewLink(tripId);
+};
+
+/* 후기 페이지 (설문 + 결과) */
+window.RV = null;   // 작성 중인 설문 상태 { tripId, form, tackle } — 입력칸 oninput에서 직접 쓰므로 전역
+window.openReview = function(tripId) {
+  const t = TRIPS.find(x => x.id === tripId);
+  if (!t) { showToast('⚠️ 출조를 찾을 수 없습니다'); return; }
+  const mine = myReview(t);
+  window.RV = {
+    tripId,
+    form: JSON.parse(JSON.stringify(mine || { ship: {}, catch: { species: {} }, ops: {}, revisit: '', comment: '' })),
+    tackle: JSON.parse(JSON.stringify(mine?.tackle || { colors: [] })),
+  };
+  delete RV.form.tackle;
+  prevPage = currentPage === 'review' ? prevPage : currentPage;
+  switchPageRaw('review');
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  renderReviewPage(true);
+  document.querySelector('.scroll-area').scrollTop = 0;
+};
+window.reviewBack = function() { const id = RV?.tripId; window.RV = null; id ? goDetail(id) : goBack(); };
+
+// full=true: 설문 폼까지 다시 그림 (입력 중 실시간 갱신 시엔 결과만 갱신)
+function renderReviewPage(full) {
+  const t = TRIPS.find(x => x.id === RV?.tripId); if (!t) return;
+  if (full) {
+    const st = reviewState(t), mine = isMine(t);
+    const isTop = (t.review?.top || []).find(x => x.kakao === ME?.kakao);
+    document.getElementById('review-content').innerHTML = `
+      <div class="detail-hero">
+        <div class="back-row"><button class="back-btn" onclick="reviewBack()"><i class="ti ti-arrow-left"></i></button>
+          <span style="color:rgba(255,255,255,.7);font-size:13px">출조 후기</span></div>
+        <div style="color:#fff;font-size:18px;font-weight:800;line-height:1.3">${esc(t.title)}</div>
+        <div style="color:rgba(255,255,255,.75);font-size:12px;margin-top:4px">${fmtDate(t.date)} · 🚢 ${esc(boatKey(t))}</div>
+      </div>
+      ${isTop ? tackleFormHtml(t, isTop) : ''}
+      ${st === 'open' && mine ? reviewFormHtml(t)
+        : st === 'open' ? `<div class="empty" style="padding:20px"><p>이 출조 신청자만 후기를 작성할 수 있습니다</p></div>`
+        : st === 'closed' && mine && !myReview(t)?.ship ? `<div class="empty" style="padding:20px"><p>후기 작성 기간이 끝났습니다</p></div>` : ''}
+      <div id="rv-results"></div>`;
+  }
+  const el = document.getElementById('rv-results');
+  if (el) el.innerHTML = reviewResultsHtml(t);
+}
+
+const starRow = (group, key, label) => {
+  const v = +RV.form[group]?.[key] || 0;
+  return `<div class="rv-row"><span>${label}</span><span class="rv-stars" data-g="${group}" data-k="${key}">
+    ${[1, 2, 3, 4, 5].map(i => `<button type="button" class="${i <= v ? 'on' : ''}" onclick="rvStar('${group}','${key}',${i})">★</button>`).join('')}</span></div>`;
+};
+function reviewFormHtml(t) {
+  const f = RV.form, sp = f.catch.species || {};
+  const custom = Object.keys(sp).filter(k => !RV_SPECIES.includes(k));
+  return `<div class="rv-card">
+    <div class="rv-title">🚢 선박</div>
+    ${RV_SHIP.map(([k, l]) => starRow('ship', k, l)).join('')}
+  </div>
+  <div class="rv-card">
+    <div class="rv-title">🐟 내 조과</div>
+    <div class="form-hint" style="margin:0 0 8px">잡은 어종을 누르고 마릿수를 적어주세요</div>
+    <div class="rv-chips">${[...RV_SPECIES, ...custom].map(s => `<button type="button" class="rv-chip ${s in sp ? 'on' : ''}" onclick="rvSpecies('${esc(s)}')">${esc(s)}</button>`).join('')}
+      <button type="button" class="rv-chip" onclick="rvSpeciesCustom()">+ 직접 입력</button></div>
+    <div id="rv-species-counts">${Object.keys(sp).map(s => `<div class="rv-row"><span>${esc(s)}</span>
+      <span><input class="form-input rv-num" type="number" min="0" inputmode="numeric" value="${sp[s] ?? ''}" placeholder="0" oninput="rvSpeciesCount('${esc(s)}',this.value)"> 마리</span></div>`).join('')}</div>
+    <div class="rv-row"><span>최대 크기</span><span><input class="form-input rv-num" type="number" min="0" step="0.5" inputmode="decimal" value="${f.catch.maxSize ?? ''}" placeholder="-" oninput="RV.form.catch.maxSize=+this.value||null"> cm</span></div>
+    ${starRow('catch', 'satisfaction', '조과 만족도')}
+  </div>
+  <div class="rv-card">
+    <div class="rv-title">📋 운영</div>
+    ${RV_OPS.map(([k, l]) => starRow('ops', k, l)).join('')}
+  </div>
+  <div class="rv-card">
+    <div class="rv-title">🔁 이 배를 다시 타고 싶나요?</div>
+    <div class="rv-chips">${RV_REVISIT.map(([k, l]) => `<button type="button" class="rv-chip ${f.revisit === k ? 'on' : ''}" onclick="rvRevisit('${k}')">${l}</button>`).join('')}</div>
+  </div>
+  <div class="rv-card">
+    <div class="rv-title">💬 자유 의견 <span style="font-weight:400;color:var(--text-hint);font-size:11px">(선택)</span></div>
+    <textarea class="form-input" rows="3" placeholder="좋았던 점, 아쉬운 점, 다음 출조 희망 등" oninput="RV.form.comment=this.value">${esc(f.comment || '')}</textarea>
+  </div>
+  <button class="btn btn-primary" style="margin-bottom:16px" onclick="submitReview()"><i class="ti ti-send"></i> ${myReview(t)?.ship ? '후기 수정하기' : '후기 제출하기'}</button>`;
+}
+function tackleFormHtml(t, top) {
+  const k = RV.tackle;
+  const inp = (key, ph) => `<input class="form-input" value="${esc(k[key] || '')}" placeholder="${ph}" oninput="RV.tackle['${key}']=this.value">`;
+  return `<div class="rv-card" style="border:1.5px solid var(--sand);background:var(--sand-light)">
+    <div class="rv-title" style="color:#7A4F00">🏆 ${RANK_LABEL[top.rank - 1] || top.rank + '위'} 축하드려요! 장비 설문</div>
+    <div class="form-hint" style="margin:0 0 10px">회원들에게 공개되어 다음 출조에 큰 도움이 됩니다</div>
+    <label class="form-label">로드</label>${inp('rod', '예) 다이와 에메랄다스 MX 63ML')}
+    <label class="form-label" style="margin-top:8px">릴</label>${inp('reel', '예) 시마노 세피아 C3000S')}
+    <label class="form-label" style="margin-top:8px">합사 호수</label>
+    <div class="rv-chips">${TK_LINE.map(l => `<button type="button" class="rv-chip ${k.line === l ? 'on' : ''}" onclick="rvLine('${l}')">${l}</button>`).join('')}</div>
+    <label class="form-label" style="margin-top:8px">에기 종류 (브랜드·모델·사이즈)</label>${inp('egiType', '예) 요즈리 아오리큐 2.5호, 봉돌 15호')}
+    <label class="form-label" style="margin-top:8px">잘 먹힌 에기 색상</label>
+    <div class="rv-chips">${TK_COLORS.map(c => `<button type="button" class="rv-chip ${(k.colors || []).includes(c) ? 'on' : ''}" onclick="rvColor('${c}')">${c}</button>`).join('')}</div>
+    ${inp('colorNote', '색상 메모 (예: 오전 핑크, 물때 바뀌고 케이무라)')}
+    <label class="form-label" style="margin-top:8px">액션 방법</label>
+    <textarea class="form-input" rows="3" placeholder="예) 바닥 찍고 살짝 들어 3초 스테이, 짧은 호핑 2번" oninput="RV.tackle.action=this.value">${esc(k.action || '')}</textarea>
+    <label class="form-label" style="margin-top:8px">기타 팁</label>${inp('note', '채비, 포인트, 물때 등')}
+    <button class="btn btn-primary" style="margin-top:12px;background:var(--sand)" onclick="submitTackle()"><i class="ti ti-send"></i> 장비 설문 ${myReview(t)?.tackle ? '수정' : '제출'}</button>
+  </div>`;
+}
+
+window.rvStar = function(g, k, v) {
+  RV.form[g] = RV.form[g] || {}; RV.form[g][k] = v;
+  document.querySelectorAll(`.rv-stars[data-g="${g}"][data-k="${k}"] button`).forEach((b, i) => b.classList.toggle('on', i < v));
+};
+window.rvSpecies = function(s) {
+  const sp = RV.form.catch.species;
+  if (s in sp) delete sp[s]; else sp[s] = null;
+  renderReviewPage(true);
+};
+window.rvSpeciesCustom = function() {
+  const s = (prompt('어종 이름을 입력하세요') || '').replace(/['"\\<>]/g, '').trim();
+  if (s) { RV.form.catch.species[s] = null; renderReviewPage(true); }
+};
+window.rvSpeciesCount = function(s, v) { RV.form.catch.species[s] = v === '' ? null : Math.max(0, +v || 0); };
+window.rvRevisit = function(k) { RV.form.revisit = k; renderReviewPage(true); };
+window.rvLine = function(l) { RV.tackle.line = RV.tackle.line === l ? '' : l; renderReviewPage(true); };
+window.rvColor = function(c) {
+  const a = RV.tackle.colors = RV.tackle.colors || [];
+  a.includes(c) ? a.splice(a.indexOf(c), 1) : a.push(c);
+  renderReviewPage(true);
+};
+
+window.submitReview = async function() {
+  const t = TRIPS.find(x => x.id === RV?.tripId); if (!t) return;
+  if (reviewState(t) !== 'open') { showToast('⚠️ 후기 작성 기간이 아닙니다'); return; }
+  if (!isMine(t)) { showToast('⚠️ 이 출조 신청자만 작성할 수 있습니다'); return; }
+  const f = RV.form;
+  const missing = [...RV_SHIP.map(([k]) => f.ship?.[k]), f.catch?.satisfaction, ...RV_OPS.map(([k]) => f.ops?.[k])].some(v => !v);
+  if (missing) { showToast('⚠️ 별점을 모두 선택해주세요'); return; }
+  if (!f.revisit) { showToast('⚠️ 재이용 의향을 선택해주세요'); return; }
+  const species = {};
+  Object.entries(f.catch.species || {}).forEach(([k, n]) => { species[k] = +n || 0; });
+  const data = { ...f, catch: { ...f.catch, species }, name: ME.name, updatedAt: Date.now() };
+  const prevTackle = myReview(t)?.tackle;
+  if (prevTackle) data.tackle = prevTackle;
+  try {
+    await updateDoc(doc(db, 'trips', t.id), new FieldPath('reviews', ME.kakao), data);
+    showToast('✅ 후기가 저장되었습니다. 감사합니다!');
+    renderReviewPage(true);
+  } catch (e) { showToast('⚠️ 저장 중 오류 발생'); console.error(e); }
+};
+window.submitTackle = async function() {
+  const t = TRIPS.find(x => x.id === RV?.tripId); if (!t) return;
+  const k = RV.tackle;
+  if (!['rod', 'reel', 'line', 'egiType', 'action'].some(x => (k[x] || '').trim())) { showToast('⚠️ 장비 정보를 입력해주세요'); return; }
+  const tackle = { ...k, updatedAt: Date.now() };
+  try {
+    if (myReview(t)) await updateDoc(doc(db, 'trips', t.id), new FieldPath('reviews', ME.kakao, 'tackle'), tackle);
+    else await updateDoc(doc(db, 'trips', t.id), new FieldPath('reviews', ME.kakao), { name: ME.name, tackle, updatedAt: Date.now() });
+    showToast('🏆 장비 설문이 저장되었습니다. 감사합니다!');
+    renderReviewPage(true);
+  } catch (e) { showToast('⚠️ 저장 중 오류 발생'); console.error(e); }
+};
+
+/* 결과 (회원 모두에게 공개, 작성자 이름은 운영자만) */
+function barRow(label, v) {
+  return `<div class="rv-row"><span>${label}</span><span style="display:flex;align-items:center;gap:6px;min-width:120px">
+    <span class="score-bar-wrap" style="flex:1;margin:0"><span class="score-bar-fill" style="display:block;width:${v / 5 * 100}%;background:var(--sand)"></span></span>
+    <b style="font-size:12px;min-width:30px;text-align:right">${v ? v.toFixed(1) : '-'}</b></span></div>`;
+}
+function summaryHtml(S) {
+  const sp = Object.entries(S.species).sort((a, b) => b[1] - a[1]);
+  const rv = S.revisit, rvN = rv.yes + rv.mid + rv.no;
+  return `<div class="rv-card"><div class="rv-title">🚢 선박</div>${RV_SHIP.map(([k, l]) => barRow(l, S.ship[k])).join('')}</div>
+    <div class="rv-card"><div class="rv-title">🐟 조과</div>
+      <div class="stats-row" style="margin-bottom:8px"><div class="stat-box"><div class="stat-num">${S.avgCatch.toFixed(1)}</div><div class="stat-lab">1인 평균 마릿수</div></div>
+        <div class="stat-box"><div class="stat-num">${S.maxSize || '-'}</div><div class="stat-lab">최대 크기(cm)</div></div>
+        <div class="stat-box"><div class="stat-num">${S.satisfaction ? S.satisfaction.toFixed(1) : '-'}</div><div class="stat-lab">조과 만족도</div></div></div>
+      ${sp.length ? `<div class="rv-chips">${sp.map(([k, n]) => `<span class="chip">${esc(k)} ${n}마리</span>`).join('')}</div>` : ''}</div>
+    <div class="rv-card"><div class="rv-title">📋 운영</div>${RV_OPS.map(([k, l]) => barRow(l, S.ops[k])).join('')}</div>
+    <div class="rv-card"><div class="rv-title">🔁 재이용 의향</div>
+      ${rvN ? `<div style="display:flex;height:22px;border-radius:6px;overflow:hidden;font-size:11px;font-weight:700;color:#fff">
+        ${[['yes', 'var(--fish)'], ['mid', 'var(--sand)'], ['no', 'var(--danger)']].filter(([k]) => rv[k]).map(([k, c]) => `<div style="flex:${rv[k]};background:${c};display:flex;align-items:center;justify-content:center">${Math.round(rv[k] / rvN * 100)}%</div>`).join('')}
+      </div><div style="font-size:11px;color:var(--text-hint);margin-top:4px">다시 탈래요 ${rv.yes} · 보통 ${rv.mid} · 아니요 ${rv.no}</div>` : '-'}</div>`;
+}
+function tackleListHtml(t) {
+  const top = t.review?.top || [];
+  if (!top.length) return '';
+  return `<div class="rv-card" style="border:1.5px solid var(--sand)"><div class="rv-title" style="color:#7A4F00">🏆 조과 상위 장비</div>
+    ${top.map(x => {
+      const k = t.reviews?.[x.kakao]?.tackle;
+      return `<div style="padding:8px 0;border-top:.5px solid var(--border)">
+        <div style="font-size:13px;font-weight:800">${RANK_LABEL[x.rank - 1] || x.rank + '위'} · ${esc(x.name)} <span style="font-size:11px;color:var(--text-hint);font-weight:600">${x.count}마리${x.maxSize ? ` · 최대 ${x.maxSize}cm` : ''}</span></div>
+        ${k ? `<div style="font-size:12px;color:var(--text-sub);line-height:1.7;margin-top:3px">
+          ${k.rod ? `🎣 로드: ${esc(k.rod)}<br>` : ''}${k.reel ? `⚙️ 릴: ${esc(k.reel)}<br>` : ''}${k.line ? `🧵 합사: ${esc(k.line)}<br>` : ''}
+          ${k.egiType ? `🦑 에기: ${esc(k.egiType)}<br>` : ''}${(k.colors || []).length || k.colorNote ? `🎨 색상: ${esc((k.colors || []).join(', '))}${k.colorNote ? ` (${esc(k.colorNote)})` : ''}<br>` : ''}
+          ${k.action ? `🤏 액션: <span style="white-space:pre-line">${esc(k.action)}</span><br>` : ''}${k.note ? `💡 ${esc(k.note)}` : ''}</div>`
+        : `<div style="font-size:11px;color:var(--text-hint);margin-top:2px">장비 설문 대기 중</div>`}
+      </div>`;
+    }).join('')}</div>`;
+}
+function reviewResultsHtml(t) {
+  const list = Object.entries(t.reviews || {}).filter(([, rv]) => rv.ship);
+  if (!list.length) return `<div class="empty" style="padding:24px"><i class="ti ti-message-off"></i><p>아직 후기가 없습니다</p></div>`;
+  const S = reviewSummary([{ reviews: Object.fromEntries(list) }]);
+  const comments = list.filter(([, rv]) => (rv.comment || '').trim());
+  return `<p class="sec-title" style="margin:6px 0 8px">📊 후기 결과 <span style="font-size:12px;color:var(--text-hint);font-weight:600">${list.length}명 응답</span></p>
+    ${tackleListHtml(t)}
+    ${summaryHtml(S)}
+    ${comments.length ? `<div class="rv-card"><div class="rv-title">💬 자유 의견</div>
+      ${comments.map(([k, rv]) => `<div style="padding:7px 0;border-top:.5px solid var(--border);font-size:13px;white-space:pre-line">${esc(rv.comment)}
+        ${ME?.isAdmin ? `<div style="font-size:10px;color:var(--text-hint);margin-top:2px">— ${esc(rv.name)}</div>` : ''}</div>`).join('')}</div>` : ''}`;
+}
+
+/* 조과 순위 확정 (운영자) → 장비 설문 요청 */
+window.openTopModal = function(tripId) {
+  const t = TRIPS.find(x => x.id === tripId); if (!t) return;
+  const ranked = rankByCatch(t);
+  if (!ranked.length) { showToast('⚠️ 조과를 입력한 후기가 아직 없습니다'); return; }
+  document.getElementById('top-trip-id').value = tripId;
+  const opts = `<option value="">-- 없음 --</option>` + ranked.map(x => `<option value="${x.kakao}">${esc(x.name)} (${x.count}마리${x.maxSize ? `, ${x.maxSize}cm` : ''})</option>`).join('');
+  const cur = t.review?.top || [];
+  [1, 2, 3, 4].forEach(r => {
+    const el = document.getElementById('top-' + r);
+    el.innerHTML = opts;
+    el.value = cur.find(x => x.rank === r)?.kakao || ranked[r - 1]?.kakao || '';
+  });
+  document.getElementById('top-awards').checked = !t.awards || !Object.keys(t.awards).length;
+  document.getElementById('top-modal').classList.add('open');
+};
+window.submitTop = async function() {
+  const tripId = document.getElementById('top-trip-id').value;
+  const t = TRIPS.find(x => x.id === tripId); if (!t) return;
+  const ranked = rankByCatch(t);
+  const top = [1, 2, 3, 4].map(r => ({ r, k: document.getElementById('top-' + r).value })).filter(x => x.k)
+    .map(({ r, k }) => { const x = ranked.find(y => y.kakao === k); return { rank: r, kakao: k, name: x.name, count: x.count, maxSize: x.maxSize }; });
+  if (!top.length) { showToast('⚠️ 한 명 이상 선택해주세요'); return; }
+  if (new Set(top.map(x => x.kakao)).size !== top.length) { showToast('⚠️ 같은 회원이 중복 선택되었습니다'); return; }
+  const upd = { 'review.top': top, 'review.topAt': Date.now() };
+  if (document.getElementById('top-awards').checked) {
+    const keys = ['1st', '2nd', '3rd'];
+    upd.awards = Object.fromEntries(top.filter(x => x.rank <= 3).map(x => [keys[x.rank - 1], { kakao: x.kakao, name: x.name }]));
+  }
+  try {
+    await updateDoc(doc(db, 'trips', tripId), upd);
+    if (upd.awards) {   // 수상자는 참석 처리 (점수 집계 기준)
+      const winners = new Set(Object.values(upd.awards).map(a => a.kakao));
+      await mutateApplicants(tripId, list => list.map(a => winners.has(a.kakao) ? { ...a, attended: true } : a));
+    }
+    closeModal('top-modal');
+    showToast('🏆 조과 순위가 확정되었습니다. 상위자에게 장비 설문 알림이 갑니다');
+  } catch (e) { showToast('⚠️ 저장 중 오류 발생'); console.error(e); }
+};
+
+/* 선박별 후기 (회원 모두에게 공개) */
+window.openBoats = function() {
+  prevPage = currentPage;
+  switchPageRaw('boats');
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  renderBoats();
+  document.querySelector('.scroll-area').scrollTop = 0;
+};
+function renderBoats() {
+  const reviewed = TRIPS.filter(t => Object.values(t.reviews || {}).some(rv => rv.ship));
+  const groups = {};
+  reviewed.forEach(t => { (groups[boatKey(t)] = groups[boatKey(t)] || []).push(t); });
+  const rows = Object.entries(groups).map(([boat, trips]) => {
+    const S = reviewSummary(trips.map(t => ({ reviews: Object.fromEntries(Object.entries(t.reviews || {}).filter(([, rv]) => rv.ship)) })));
+    const shipAvg = avg(Object.values(S.ship)), opsAvg = avg(Object.values(S.ops));
+    return { boat, trips, S, shipAvg, opsAvg };
+  }).sort((a, b) => b.shipAvg - a.shipAvg);
+  document.getElementById('boats-content').innerHTML = `
+    <div class="back-row" style="margin-bottom:12px"><button class="back-btn" style="background:var(--ocean)" onclick="goBack()"><i class="ti ti-arrow-left"></i></button>
+      <span style="font-size:16px;font-weight:800">📊 선박별 후기</span>
+      ${ME?.isAdmin ? `<button class="btn btn-outline btn-sm" style="margin-left:auto;border:.5px solid var(--border)" onclick="downloadReviewsCsv()"><i class="ti ti-download"></i> 엑셀(CSV)</button>` : ''}</div>
+    ${rows.length ? rows.map(r => `<div class="rv-card">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:6px">
+        <div><div style="font-size:15px;font-weight:800">🚢 ${esc(r.boat)}</div>
+          <div style="font-size:11px;color:var(--text-hint)">출조 ${r.trips.length}회 · 후기 ${r.S.n}개</div></div>
+        <div style="text-align:right"><div style="font-size:18px;font-weight:800;color:var(--sand)">${stars(r.shipAvg)}</div><div style="font-size:10px;color:var(--text-hint)">선박 평균</div></div>
+      </div>
+      <div style="font-size:12px;color:var(--text-sub);line-height:1.7">
+        🐟 1인 평균 ${r.S.avgCatch.toFixed(1)}마리 · 최대 ${r.S.maxSize || '-'}cm · 조과 만족 ${stars(r.S.satisfaction)}<br>
+        📋 운영 ${stars(r.opsAvg)} · 🔁 다시 탈래요 ${r.S.n ? Math.round(r.S.revisit.yes / r.S.n * 100) : 0}%</div>
+      <div style="margin-top:6px">${r.trips.sort((a, b) => (b.date || '').localeCompare(a.date || '')).map(t => `<span class="chip" style="cursor:pointer" onclick="openReview('${t.id}')">${fmtDate(t.date)} ${esc(t.title)}</span>`).join('')}</div>
+    </div>`).join('') : '<div class="empty"><i class="ti ti-message-off"></i><p>아직 후기가 없습니다</p></div>'}`;
+}
+window.downloadReviewsCsv = function() {
+  const head = ['출조일', '출조명', '선박', '작성자', ...RV_SHIP.map(x => x[1]), '어종별 마릿수', '총 마릿수', '최대 크기(cm)', '조과 만족도',
+    ...RV_OPS.map(x => x[1]), '재이용', '자유 의견', '순위', '로드', '릴', '합사', '에기', '색상', '액션', '기타 팁'];
+  const rows = [];
+  TRIPS.forEach(t => Object.entries(t.reviews || {}).forEach(([k, rv]) => {
+    const top = (t.review?.top || []).find(x => x.kakao === k), tk = rv.tackle || {};
+    rows.push([t.date, t.title, boatKey(t), rv.name, ...RV_SHIP.map(([x]) => rv.ship?.[x] ?? ''),
+      Object.entries(rv.catch?.species || {}).map(([s, n]) => `${s} ${n}`).join(' / '), catchTotal(rv), rv.catch?.maxSize ?? '', rv.catch?.satisfaction ?? '',
+      ...RV_OPS.map(([x]) => rv.ops?.[x] ?? ''), { yes: '다시 탈래요', mid: '보통', no: '아니요' }[rv.revisit] || '', rv.comment || '',
+      top ? RANK_LABEL[top.rank - 1] : '', tk.rod || '', tk.reel || '', tk.line || '', tk.egiType || '',
+      [...(tk.colors || []), tk.colorNote].filter(Boolean).join(', '), tk.action || '', tk.note || '']);
+  }));
+  const csv = '﻿' + [head, ...rows].map(r => r.map(v => `"${String(v ?? '').replace(/"/g, '""')}"`).join(',')).join('\r\n');
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
+  a.download = `출조후기_${new Date().toISOString().slice(0, 10)}.csv`;
+  a.click();
+};
 
 /* ── 🪑 자리배치 ─────────────────────────────────
  * trips/{id}.seating = {
@@ -2500,7 +2980,7 @@ window.confirmAddMember = async function() {
 window.openNewModal=function(){
   document.getElementById('f-editing-id').value='';
   document.getElementById('trip-modal-title').innerHTML='<i class="ti ti-fish"></i> 새 출조 등록';
-  ['f-title','f-location','f-kakao','f-joincode','f-note','f-result'].forEach(id=>document.getElementById(id).value='');
+  ['f-title','f-location','f-boat','f-kakao','f-joincode','f-note','f-result'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('f-status').value='';
   document.getElementById('f-account').value = ME?.isAdmin ? '3333-36-1979819 카카오뱅크' : '';
   document.getElementById('f-date').value='';document.getElementById('f-time').value='05:00';
@@ -2515,7 +2995,7 @@ window.openEditModal=function(id,e){
   document.getElementById('f-editing-id').value=id;
   document.getElementById('trip-modal-title').innerHTML='<i class="ti ti-edit"></i> 출조 수정';
   document.getElementById('f-title').value=t.title||'';document.getElementById('f-date').value=t.date||'';
-  document.getElementById('f-time').value=t.time||'05:00';document.getElementById('f-location').value=t.location||'';
+  document.getElementById('f-time').value=t.time||'05:00';document.getElementById('f-location').value=t.location||'';document.getElementById('f-boat').value=t.boat||'';
   document.getElementById('f-capacity').value=t.capacity||10;document.getElementById('f-cost').value=t.cost||0;
   document.getElementById('f-deadline').value=t.deadline||'';document.getElementById('f-kakao').value=t.kakaoLink||'';document.getElementById('f-joincode').value=t.joinCode||'';
   document.getElementById('f-note').value=t.note||'';
@@ -2539,7 +3019,7 @@ window.submitNewTrip=async function(){
   const openTime = document.getElementById('f-opentime').value || '20:00';
   const openAt   = openDate ? new Date(openDate + 'T' + openTime).getTime() : null;
 
-  const data={title,date,time:document.getElementById('f-time').value||'05:00',location:loc,
+  const data={title,date,time:document.getElementById('f-time').value||'05:00',location:loc,boat:document.getElementById('f-boat').value.trim(),
     capacity:parseInt(document.getElementById('f-capacity').value)||10,
     cost:parseInt(document.getElementById('f-cost').value)||0,
     deadline:document.getElementById('f-deadline').value,
@@ -2866,7 +3346,7 @@ function showKakaoBrowserBanner() {
 /* ── Modal outside click ─────────────────────── */
 // 새 출조 등록 모달은 실수로 닫히지 않도록 외부 클릭 비활성화
 // 회원 등록, 프로필 수정 모달만 외부 클릭 시 닫힘
-['add-member-modal','edit-profile-modal','push-modal','add-applicant-modal','award-modal','attend-modal','seat-config-modal'].forEach(id=>{
+['add-member-modal','edit-profile-modal','push-modal','add-applicant-modal','award-modal','attend-modal','seat-config-modal','top-modal'].forEach(id=>{
   document.getElementById(id).addEventListener('click',function(e){if(e.target===this)closeModal(id);});
 });
 
