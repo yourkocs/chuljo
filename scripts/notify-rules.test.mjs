@@ -72,3 +72,10 @@ test('후기: 지난 출조도 발송, 미작성자에게만, 하루 뒤 재알�
     reviews: { u3: { ship: {}, tackle: { rod: 'x' } } } }]);
   assert.equal(tk.flag, 'tackle'); assert.deepEqual(tk.recipients, ['u1']);
 });
+
+test('마감일 당일은 자정까지 모집 (오전 9시에 마감되지 않음)', () => {
+  const t = { ...base, id: 't', deadline: '2026-10-11', notified: { open: 1 }, applicants: [{ kakao: 'u1' }] };
+  assert.equal(plan([t]).length, 0);                                       // 10:00 KST 당일 → 아직 모집 중
+  const [p] = planNotifications([t], users, Date.parse('2026-10-11T15:00:01Z')); // 10/12 00:00:01 KST
+  assert.equal(p.flag, 'closed');
+});

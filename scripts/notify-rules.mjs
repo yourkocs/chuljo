@@ -9,7 +9,8 @@ const kstHour = ms => new Date(ms + KST).getUTCHours();
 
 export const isOpen = (t, now) => !t.openAt || now >= t.openAt;
 export const isFull = t => (t.applicants || []).length >= (t.capacity || 0);
-export const isPastDeadline = (t, now) => !!t.deadline && Date.parse(t.deadline) < now;
+// 마감일 당일 23:59:59(한국 시간)까지 모집 — 앱과 같은 기준
+export const isPastDeadline = (t, now) => !!t.deadline && Date.parse(`${t.deadline}T23:59:59+09:00`) < now;
 export const isPast = (t, now) => !!t.date && t.date < kstDate(now);
 const isCancelled = t => typeof t.status === 'string' && t.status.startsWith('cancelled');
 const createdMs = t => t.createdAt?.toMillis?.() ?? (typeof t.createdAt === 'number' ? t.createdAt : null);

@@ -360,6 +360,13 @@ textarea.form-input{resize:vertical;min-height:110px;line-height:1.6}
               <label class="form-label">연락처</label>
               <input class="form-input" id="reg-phone" placeholder="010-0000-0000" type="tel">
             </div>
+            <!-- 카카오 첫 가입 시: 예전 아이디 계정 연결 -->
+            <div id="link-old-group" style="display:none;background:var(--sand-light);border:1px solid rgba(245,166,35,.35);border-radius:var(--radius-xs);padding:12px;margin-bottom:13px">
+              <div style="font-size:13px;font-weight:800;color:#7A4F00;margin-bottom:4px">🔗 예전에 아이디로 가입한 적이 있나요?</div>
+              <div style="font-size:11px;color:#A07020;line-height:1.5;margin-bottom:8px">'아이디 직접 입력'으로 쓰던 아이디를 입력하면 신청 내역·자리·후기를 이 카카오 계정으로 옮겨요. 이름(과 연락처)이 기존 계정과 같아야 합니다.</div>
+              <input class="form-input" id="reg-oldid" placeholder="예전에 쓰던 아이디" autocomplete="off" style="margin-bottom:8px">
+              <button class="btn btn-sm" style="width:100%;background:var(--sand);color:#fff" onclick="linkOldAccount()"><i class="ti ti-link"></i> 기존 계정 연결하고 가입</button>
+            </div>
             <div class="form-group" id="admin-code-group" style="display:none">
               <label class="form-label">운영자 코드</label>
               <input class="form-input" id="reg-admincode" placeholder="운영자 코드 입력">
@@ -995,6 +1002,7 @@ async function handleKakaoCallback() {
       document.getElementById('reg-kakao').value = kakaoId;
       document.getElementById('reg-name').value = kakaoNick;
       document.getElementById('reg-guide-text').textContent = '카카오 계정으로 신규 가입합니다. 정보를 확인해주세요.';
+      document.getElementById('link-old-group').style.display = 'block';
     }
   } catch(e) { showToast('⚠️ 카카오 로그인 처리 중 오류 발생'); console.error(e); }
 };
@@ -1005,6 +1013,10 @@ window.checkKakaoId = async function() {
   if (!kakao) { showToast('⚠️ 카톡 아이디를 입력해주세요'); return; }
   try {
     const snap = await getDoc(doc(db, 'users', kakao));
+    if (snap.exists() && snap.data().mergedInto) {
+      showToast('이 아이디는 카카오 계정으로 통합되었어요. "카카오로 시작하기"로 로그인해주세요');
+      return;
+    }
     if (snap.exists()) {
       ME = { kakao, ...snap.data() };
       localStorage.setItem('chuljo_me', JSON.stringify(ME));
@@ -1015,6 +1027,7 @@ window.checkKakaoId = async function() {
       document.getElementById('register-section').style.display = 'block';
       document.getElementById('reg-kakao').value = kakao;
       document.getElementById('reg-guide-text').textContent = '신규 회원입니다. 정보를 입력해주세요.';
+      document.getElementById('link-old-group').style.display = 'none';
     }
   } catch(e) { showToast('⚠️ 연결 오류. 잠시 후 다시 시도해주세요'); console.error(e); }
 };
@@ -1028,6 +1041,86 @@ window.resetLogin = function() {
 window.toggleAdminField = function() {
   document.getElementById('admin-code-group').style.display =
     document.getElementById('is-admin-check').checked ? 'block' : 'none';
+};
+
+/* ── 기존 아이디 계정 → 카카오 계정 연결 ─────────── */
+// 출조 문서 안의 옛 아이디를 새 아이디로 바꾼 변경분 (없으면 null)
+function replaceAccountInTrip(d, oldId, newId) {
+  const sw = k => k === oldId ? newId : k;
+  const uniq = arr => [...new Set(arr)];
+  const upd = {};
+  const apps = d.applicants || [];
+  if (apps.some(a => a.kakao === oldId)) {
+    const seen = new Set();
+    upd.applicants = apps.map(a => a.kakao === oldId ? { ...a, kakao: newId } : a)
+      .filter(a => !seen.has(a.kakao) && seen.add(a.kakao));   // 두 계정 모두 신청했으면 하나만
+  }
+  if (d.createdBy === oldId) upd.createdBy = newId;
+  if (d.seating) {
+    const st = d.seating, seats = {};
+    Object.entries(st.seats || {}).forEach(([n, k]) => { seats[n] = sw(k); });
+    const ns = { ...st, seats, bowApplicants: uniq((st.bowApplicants || []).map(sw)), bowWinners: uniq((st.bowWinners || []).map(sw)) };
+    if (JSON.stringify(ns) !== JSON.stringify(st)) upd.seating = ns;
+  }
+  if (d.awards) {
+    const na = Object.fromEntries(Object.entries(d.awards).map(([r, a]) => [r, a?.kakao === oldId ? { ...a, kakao: newId } : a]));
+    if (JSON.stringify(na) !== JSON.stringify(d.awards)) upd.awards = na;
+  }
+  if (d.reviews?.[oldId]) {
+    const nr = { ...d.reviews };
+    if (!nr[newId]) nr[newId] = nr[oldId];
+    delete nr[oldId];
+    upd.reviews = nr;
+  }
+  if (d.review?.top?.some(x => x.kakao === oldId)) upd.review = { ...d.review, top: d.review.top.map(x => x.kakao === oldId ? { ...x, kakao: newId } : x) };
+  return Object.keys(upd).length ? upd : null;
+}
+
+window.linkOldAccount = async function() {
+  const newId = document.getElementById('reg-kakao').value.trim();
+  const oldId = document.getElementById('reg-oldid').value.trim();
+  const name  = document.getElementById('reg-name').value.trim();
+  const phone = document.getElementById('reg-phone').value.trim();
+  const digits = v => (v || '').replace(/\D/g, '');
+  if (!isKakaoAcc(newId)) return;
+  if (!oldId) { showToast('⚠️ 예전에 쓰던 아이디를 입력해주세요'); return; }
+  if (!name) { showToast('⚠️ 이름을 입력해주세요'); return; }
+  if (isKakaoAcc(oldId) || oldId === newId) { showToast('⚠️ 아이디 직접 입력으로 가입한 계정만 연결할 수 있어요'); return; }
+  try {
+    const snap = await getDoc(doc(db, 'users', oldId));
+    if (!snap.exists()) { showToast('⚠️ 해당 아이디로 가입된 계정이 없습니다'); return; }
+    const old = snap.data();
+    if (old.mergedInto) { showToast('⚠️ 이미 다른 카카오 계정에 연결된 아이디입니다'); return; }
+    if ((old.name || '').trim() !== name) { showToast('⚠️ 이름이 기존 계정과 다릅니다'); return; }
+    if (digits(old.phone) && digits(old.phone) !== digits(phone)) { showToast('⚠️ 연락처가 기존 계정과 다릅니다. 기존 계정의 연락처를 입력해주세요'); return; }
+    if (!confirm(`@${oldId} 계정의 신청 내역·자리·후기를 이 카카오 계정으로 옮길까요?\n옮긴 뒤에는 카카오 로그인으로만 이용합니다.`)) return;
+    showToast('계정을 연결하는 중...');
+
+    const { mergedInto, pushEnabled, ...keep } = old;
+    const userData = { ...keep, name, phone: phone || old.phone || '', kakao: newId, mergedFrom: oldId,
+      createdAt: old.createdAt || serverTimestamp(), linkedAt: serverTimestamp() };
+    await setDoc(doc(db, 'users', newId), userData);
+
+    // 모든 출조에서 옛 아이디 → 새 아이디 (출조별 트랜잭션)
+    let moved = 0;
+    const trips = await getDocs(collection(db, 'trips'));
+    for (const tdoc of trips.docs) {
+      if (!JSON.stringify(tdoc.data()).includes(oldId)) continue;
+      const changed = await runTransaction(db, async tx => {
+        const cur = await tx.get(tdoc.ref);
+        const upd = cur.exists() ? replaceAccountInTrip(cur.data(), oldId, newId) : null;
+        if (upd) tx.update(tdoc.ref, upd);
+        return !!upd;
+      });
+      if (changed) moved++;
+    }
+    await updateDoc(doc(db, 'users', oldId), { mergedInto: newId, mergedAt: serverTimestamp() });
+
+    ME = { ...userData, kakao: newId };
+    localStorage.setItem('chuljo_me', JSON.stringify(ME));
+    afterLogin();
+    showToast(`✅ 기존 계정 연결 완료! 출조 ${moved}건의 내역을 옮겼어요`);
+  } catch(e) { showToast('⚠️ 계정 연결 중 오류 발생. 운영자에게 문의해주세요'); console.error(e); }
 };
 
 window.doRegister = async function() {
@@ -1049,6 +1142,13 @@ window.doRegister = async function() {
 };
 
 function afterLogin() {
+  // 이 기기에 저장된 계정이 카카오 계정으로 통합된 옛 아이디면 다시 로그인 안내
+  getDoc(doc(db, 'users', ME.kakao)).then(snap => {
+    if (snap.exists() && snap.data().mergedInto) {
+      doLogout();
+      showToast('계정이 카카오 계정으로 통합되었어요. "카카오로 시작하기"로 로그인해주세요');
+    }
+  }).catch(() => {});
   document.getElementById('profile-avatar').textContent = ME.name?.[0] || '?';
   document.getElementById('profile-name-disp').textContent = ME.name;
   document.getElementById('profile-kakao-disp').textContent = '@' + ME.kakao;
@@ -1165,7 +1265,21 @@ function fmtCost(n) { return Number(n).toLocaleString()+'원'; }
 function isMine(t) { return (t.applicants||[]).some(a=>a.kakao===ME?.kakao); }
 function isFull(t) { return (t.applicants||[]).length>=(t.capacity||0); }
 function isPast(t) { const today=new Date();today.setHours(0,0,0,0); return new Date(t.date)<today; }
-function isPastDeadline(t) { return t.deadline && new Date(t.deadline)<new Date(); }
+// 마감일 당일 23:59:59까지 모집 (이전: UTC 기준이라 당일 오전 9시에 마감되던 문제)
+function isPastDeadline(t) { return !!t.deadline && Date.now() > new Date(t.deadline+'T23:59:59').getTime(); }
+// 모집 종료: 마감처리 / 정원 도달 / 마감일 경과
+function isRecruitDone(t) { return !!t.closed || isFull(t) || isPastDeadline(t); }
+// 같은 이름인데 가입 방식(카카오 kakao_… / 아이디 직접 입력)이 다른 계정으로 이 출조에 신청돼 있으면 그 신청자
+const isKakaoAcc = k => /^kakao_/.test(k || '');
+function otherAccountIn(t) {
+  if (!ME?.name || isMine(t)) return null;
+  const nm = ME.name.trim();
+  return (t.applicants||[]).find(a => a.kakao !== ME.kakao && (a.name||'').trim() === nm && isKakaoAcc(a.kakao) !== isKakaoAcc(ME.kakao)) || null;
+}
+function loginHowTo(k) {
+  return isKakaoAcc(k) ? '로그아웃 후 <b>카카오로 시작하기</b>로 로그인'
+    : `로그아웃 후 <b>아이디 직접 입력</b>에 <b>${esc(k)}</b> 입력`;
+}
 function canApply(t) { return !t.closed&&!isFull(t)&&!isPastDeadline(t)&&!isMine(t)&&isOpen(t); }
 function slotColor(pct) { if(pct>=1)return'var(--danger)';if(pct>=0.7)return'var(--sand)';return'var(--fish)'; }
 function isOpen(t) {
@@ -1273,6 +1387,21 @@ function renderAlerts() {
       desc: recentTrips.map(t=>t.title).join(', '),
       action: '확인하기',
       onClick: ()=>{ document.querySelector('.scroll-area').scrollTop=200; }
+    });
+  }
+
+  // ⓪ 다른 계정으로 신청된 출조 (같은 이름, 다른 가입 방식)
+  const otherAccTrips = TRIPS.filter(t => !isPast(t) && otherAccountIn(t));
+  if (otherAccTrips.length > 0) {
+    const o = otherAccountIn(otherAccTrips[0]);
+    alerts.push({
+      id: 'otheracc_' + otherAccTrips.map(t=>t.id).join('_'),
+      type: 'unpaid',
+      icon: '⚠️',
+      title: `다른 계정(@${esc(o.kakao)})으로 신청된 출조 ${otherAccTrips.length}건`,
+      desc: `같은 이름의 다른 계정으로 신청되어 있어 채팅방·자리가 안 보일 수 있어요. 본인이라면 ${loginHowTo(o.kakao)}해주세요`,
+      action: '자세히 보기',
+      onClick: () => { goDetail(otherAccTrips[0].id); }
     });
   }
 
@@ -1388,9 +1517,9 @@ function renderHome() {
   // 탭별 필터
   let list;
   if (homeTab === 'recruiting') {
-    list = all.filter(t => !isPast(t) && !t.closed && !isFull(t));
+    list = all.filter(t => !isPast(t) && !isRecruitDone(t));
   } else if (homeTab === 'closed') {
-    list = all.filter(t => !isPast(t) && (t.closed || isFull(t)));
+    list = all.filter(t => !isPast(t) && isRecruitDone(t));
   } else {
     list = all.filter(t => isPast(t));
   }
@@ -1423,11 +1552,11 @@ function renderHome() {
         ${t.result?`<span style="font-weight:400;color:var(--text-hint);font-size:11px;margin-left:4px">· ${t.result.substring(0,20)}${t.result.length>20?'...':''}</span>`:''}
       </div>` : '';
     const bc = past ? (status==='done'?'b-done':'b-cancelled')
-      : notOpenYet?'b-warn' : t.closed||isFull(t)?'b-closed'
+      : notOpenYet?'b-warn' : isRecruitDone(t)?'b-closed'
       : mine?'b-mine' : pct>=0.7?'b-warn':'b-open';
     const bt = past ? (status==='done'?'완료':'취소')
       : notOpenYet?'공개예정' : t.closed?'마감됨'
-      : isFull(t)?'정원마감' : mine?'신청완료'
+      : isFull(t)?'정원마감' : isPastDeadline(t)?'기간마감' : mine?'신청완료'
       : pct>=0.7?'마감임박':'모집중';
     const isMine2 = t.createdBy === ME?.kakao;
     return `<div class="trip-card" onclick="goDetail('${t.id}')">
@@ -1472,6 +1601,16 @@ function renderDetail(id) {
       <div style="font-size:13px;font-weight:800;color:#7A4F00;margin-bottom:6px"><i class="ti ti-clock"></i> 신청 오픈 대기 중</div>
       <div style="font-size:20px;font-weight:800;color:var(--sand)">${countdown}</div>
       <div style="font-size:11px;color:#A07020;margin-top:6px">오픈 시간이 되면 선착순 신청이 시작됩니다</div>
+    </div>`;
+  } else if(!mine && otherAccountIn(t)) {
+    const o = otherAccountIn(t);
+    btnHtml=`<div style="background:var(--danger-light);border:1.5px solid rgba(201,53,53,.3);border-radius:var(--radius-sm);padding:14px;margin-bottom:14px">
+      <div style="font-size:13px;font-weight:800;color:var(--danger);margin-bottom:6px"><i class="ti ti-user-exclamation"></i> 다른 계정으로 신청된 출조예요</div>
+      <div style="font-size:12px;color:var(--text-sub);line-height:1.7">
+        이 출조는 같은 이름의 다른 계정 <b>@${esc(o.kakao)}</b>(으)로 신청되어 있어요.<br>
+        본인이라면 ${loginHowTo(o.kakao)}하면 채팅방·자리·입금 상태가 보여요.
+      </div>
+      <button class="btn btn-outline btn-sm" style="margin-top:10px;border:.5px solid var(--border)" onclick="doLogout()"><i class="ti ti-logout"></i> 로그아웃</button>
     </div>`;
   } else if(showLink) btnHtml=`<div class="chat-reveal">
     <div style="font-size:13px;font-weight:800;color:var(--fish);margin-bottom:10px;display:flex;align-items:center;justify-content:center;gap:5px"><i class="ti ti-brand-hipchat"></i> 오픈채팅방이 열렸습니다!</div>
@@ -2798,15 +2937,15 @@ window.switchAdminTab=function(tab){
 function renderAdmin(){
   if(!ME?.isAdmin){document.getElementById('admin-list').innerHTML='<div class="empty"><i class="ti ti-lock"></i><p>운영자 권한이 필요합니다</p></div>';return;}
   const today=new Date();today.setHours(0,0,0,0);
-  const pending=TRIPS.filter(t=>!t.closed&&!isFull(t)&&new Date(t.date)>=today&&!isOpen(t));
-  const active=TRIPS.filter(t=>!t.closed&&!isFull(t)&&new Date(t.date)>=today&&isOpen(t));
-  const past=TRIPS.filter(t=>t.closed||isFull(t)||new Date(t.date)<today);
+  const pending=TRIPS.filter(t=>!isRecruitDone(t)&&new Date(t.date)>=today&&!isOpen(t));
+  const active=TRIPS.filter(t=>!isRecruitDone(t)&&new Date(t.date)>=today&&isOpen(t));
+  const past=TRIPS.filter(t=>isRecruitDone(t)||new Date(t.date)<today);
   const list=adminTab==='active'?active:adminTab==='pending'?pending:past;
   const el=document.getElementById('admin-list');
   if(!list.length){el.innerHTML='<div class="empty"><i class="ti ti-fish-off"></i><p>'+(adminTab==='active'?'모집 중인 출조가 없습니다':'지난 출조가 없습니다')+'</p></div>';return;}
   el.innerHTML=list.map(t=>{
     const isPastTab=adminTab==='past';
-    const full=t.closed||isFull(t);
+    const full=isRecruitDone(t);
     const chips=(t.applicants||[]).map(a=>`<span class="chip">${a.name}</span>`).join('');
     const isPendingTab = adminTab==='pending';
     const actionBtns=isPastTab
