@@ -172,6 +172,43 @@ body{font-family:'Noto Sans KR',sans-serif;background:var(--bg);color:var(--text
 .rv-chip.on{background:var(--ocean);border-color:var(--ocean);color:#fff}
 .rv-num{width:70px;display:inline-block;padding:6px 8px;text-align:right}
 .sec-title{font-size:15px;font-weight:800;margin-bottom:10px}
+/* 🎬 추첨 연출 */
+#reveal-overlay{position:fixed;inset:0;z-index:300;background:radial-gradient(circle at 50% 20%,#1A7A9E 0%,#083D54 60%,#041f2b 100%);color:#fff;display:none;flex-direction:column}
+#reveal-overlay.open{display:flex}
+.rev-wrap{max-width:480px;margin:0 auto;width:100%;height:100%;display:flex;flex-direction:column;position:relative}
+.rev-top{display:flex;justify-content:space-between;align-items:flex-start;padding:16px 16px 8px;padding-top:calc(16px + env(safe-area-inset-top,0px))}
+.rev-title{font-size:16px;font-weight:800}.rev-sub{font-size:11px;opacity:.7;margin-top:2px}
+.rev-icon{width:34px;height:34px;border-radius:10px;border:none;background:rgba(255,255,255,.15);color:#fff;font-size:16px;cursor:pointer}
+.rev-stage{flex:1;overflow-y:auto;padding:8px 16px 16px;position:relative}
+.rev-status{text-align:center;font-size:17px;line-height:1.5;min-height:56px;margin:6px 0 14px;font-weight:600}
+.rev-status b{color:#FFD87A}.rev-odds{font-size:13px;opacity:.8;font-weight:500}
+.rev-cards{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.elim-card{perspective:600px;height:64px;position:relative}
+.elim-face{position:absolute;inset:0;border-radius:12px;background:rgba(255,255,255,.95);color:#083D54;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:14px;transition:transform .5s,filter .5s,opacity .5s;backface-visibility:hidden;gap:4px}
+.elim-me{font-size:9px;background:var(--fish);color:#fff;border-radius:8px;padding:1px 5px}
+.elim-stamp{position:absolute;inset:0;border-radius:12px;background:rgba(0,0,0,.35);display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:900;color:#FF9E9E;border:2px dashed #FF9E9E;transform:rotateY(180deg) scale(.9);transition:transform .5s;backface-visibility:hidden}
+.elim-card.out .elim-face{transform:rotateY(180deg)}.elim-card.out .elim-stamp{transform:rotateY(0) rotate(-8deg)}
+.elim-card.tense .elim-face{animation:shake .25s infinite}
+@keyframes shake{0%,100%{transform:translateX(0) scale(1.04)}50%{transform:translateX(3px) scale(1.04)}}
+.elim-card.win .elim-face{background:linear-gradient(135deg,#FFD700,#F5A623);color:#5A3A00;box-shadow:0 0 18px rgba(255,215,0,.8);transform:scale(1.08);animation:glow 1s infinite alternate}
+@keyframes glow{from{box-shadow:0 0 10px rgba(255,215,0,.6)}to{box-shadow:0 0 26px rgba(255,215,0,1)}}
+.rev-stats{margin-top:12px;text-align:center;font-size:12px;background:rgba(255,255,255,.12);border-radius:10px;padding:8px 10px}
+#rev-boat .boat{background:rgba(255,255,255,.12);border-color:rgba(255,255,255,.5)}
+#rev-boat .boat-label,#rev-boat .boat-side-label{color:rgba(255,255,255,.8)}
+#rev-boat .seat{transition:opacity .25s,transform .25s}#rev-boat .seat.hide{opacity:0;transform:scale(.6)}
+#rev-boat .seat.pop{animation:popin .35s}@keyframes popin{0%{transform:scale(.5)}70%{transform:scale(1.15)}100%{transform:scale(1)}}
+.my-seat-card{margin:14px auto 6px;max-width:260px;background:#fff;color:var(--ocean);border-radius:18px;padding:18px;text-align:center;box-shadow:0 10px 30px rgba(0,0,0,.35);animation:popin .45s}
+.my-seat-card.gold{background:linear-gradient(135deg,#FFD700,#F5A623);color:#5A3A00}
+.my-seat-card.back{background:rgba(255,255,255,.15);color:#fff;border:2px dashed rgba(255,255,255,.6);cursor:pointer;animation:none}
+.msc-label{font-size:12px;font-weight:700;opacity:.8}.msc-no{font-size:56px;font-weight:900;line-height:1.1}.msc-no small{font-size:18px}
+.msc-side{font-size:14px;font-weight:700;margin-top:2px}.msc-stats{font-size:11px;margin-top:8px;opacity:.85}
+.rev-ctrl{display:flex;gap:8px;align-items:center;padding:10px 16px calc(14px + env(safe-area-inset-bottom,0px));background:rgba(0,0,0,.25)}
+.rev-ctrl .btn{padding:12px}.rev-skip{border:1px solid rgba(255,255,255,.4)!important;color:#fff!important;background:transparent!important;width:auto}
+.rev-auto{font-size:11px;display:flex;align-items:center;gap:4px;white-space:nowrap}
+.rev-wait{flex:1;text-align:center;font-size:13px;opacity:.8;padding:10px}
+.rev-sound-hint{position:absolute;left:50%;bottom:90px;transform:translateX(-50%);background:rgba(0,0,0,.6);border-radius:20px;padding:8px 14px;font-size:12px;white-space:nowrap;cursor:pointer}
+.cf{position:absolute;top:-10px;width:8px;height:12px;border-radius:2px;animation:fall linear forwards;pointer-events:none}
+@keyframes fall{to{transform:translateY(110vh) rotate(720deg);opacity:.7}}
 /* Chat reveal */
 .chat-reveal{background:var(--fish-light);border:1.5px dashed var(--fish);border-radius:var(--radius-sm);padding:16px;margin-bottom:14px;text-align:center}
 /* Buttons */
@@ -672,6 +709,7 @@ textarea.form-input{resize:vertical;min-height:110px;line-height:1.6}
   </div>
 </div>
 
+<div id="reveal-overlay"></div>
 <div class="toast" id="toast"></div>
 
 <!-- 🔔 푸시 알림 설정 모달 -->
@@ -1215,6 +1253,7 @@ function startSync() {
       document.getElementById('db-status').textContent = '실시간 연결됨';
       if(currentPage==='home') renderAlerts();
       rerender();
+      syncReveal();
       if (pendingTripId && TRIPS.some(t=>t.id===pendingTripId)) { goDetail(pendingTripId); pendingTripId = null; }
       const pendingReview = localStorage.getItem('pending_review');
       if (pendingReview && TRIPS.some(t=>t.id===pendingReview)) { localStorage.removeItem('pending_review'); openReview(pendingReview); }
@@ -2137,6 +2176,283 @@ window.downloadReviewsCsv = function() {
   a.click();
 };
 
+/* ── 🎬 추첨 공개 연출 (진행자 모드) ─────────────────
+ * 추첨 시 결과와 탈락 순서(elimOrder)까지 확정 저장 → 운영자가 '다음 ▶'을 누르면
+ * seating.reveal.step 이 올라가고, 신청자 전원의 폰이 같은 단계로 따라감.
+ *  step 순서: intro → (1차 탈락 묶음) → 한 명씩 탈락 → final(당첨 공개) → fill(배 지도) → done(내 자리)
+ */
+const REVEAL_SINGLE = 4;          // 마지막 N명은 한 명씩 탈락
+const FILL_MS = 280;              // 배 지도 자리 하나 채우는 간격
+
+function revealPlan(st) {
+  const steps = [{ type: 'intro' }];
+  const losers = st.elimOrder || [];
+  if ((st.bowOrder || []).length && (st.bowWinners || []).length) {
+    if (losers.length > REVEAL_SINGLE) steps.push({ type: 'elim', kakaos: losers.slice(0, losers.length - REVEAL_SINGLE), batch: true });
+    losers.slice(-REVEAL_SINGLE).forEach((k, i, arr) => steps.push({ type: 'elim', kakaos: [k], last: i === arr.length - 1 }));
+    steps.push({ type: 'final' });
+  }
+  steps.push({ type: 'fill' }, { type: 'done' });
+  return steps;
+}
+const revealStep = st => st?.reveal ? Math.min(st.reveal.step || 0, revealPlan(st).length - 1) : null;
+const revealDone = st => !st?.reveal || revealStep(st) >= revealPlan(st).length - 1;   // 예전 추첨(연출 없음)도 완료로
+
+/* 누적 기록: 선수 지원/당첨/연속 탈락 */
+function bowStats(kakao, excludeTripId) {
+  const drawn = TRIPS.filter(t => t.seating?.status === 'drawn' && t.id !== excludeTripId && (t.seating.bowOrder || t.seating.bowApplicants || []).includes(kakao))
+    .sort((a, b) => (a.date || '').localeCompare(b.date || ''));
+  const year = String(new Date().getFullYear());
+  let applied = 0, won = 0, yApplied = 0, yWon = 0, streak = 0;
+  drawn.forEach(t => {
+    const w = (t.seating.bowWinners || []).includes(kakao);
+    applied++; if (w) won++;
+    if ((t.date || '').startsWith(year)) { yApplied++; if (w) yWon++; }
+    streak = w ? 0 : streak + 1;
+  });
+  return { applied, won, yApplied, yWon, streak };
+}
+function bowStatsText(kakao, excludeTripId) {
+  const s = bowStats(kakao, excludeTripId);
+  if (!s.applied) return '첫 선수 도전! 🔰';
+  return `올해 선수 지원 ${s.yApplied}회 · 당첨 ${s.yWon}회${s.streak >= 2 ? ` · 😭 ${s.streak}연속 탈락 중` : s.streak === 1 ? ' · 지난번 탈락' : s.won ? ' · 🔥 지난번 당첨' : ''}`;
+}
+
+/* 효과음 (WebAudio 합성 — 파일 없이) */
+const sfx = (() => {
+  let ctx = null;
+  const on = () => localStorage.getItem('sfx_on') !== '0';
+  const get = () => { if (!ctx) { try { ctx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) {} } return ctx; };
+  const tone = (f, t0, dur, type = 'sine', vol = .18, slide) => {
+    const c = get(); if (!c || !on()) return;
+    const o = c.createOscillator(), g = c.createGain();
+    o.type = type; o.frequency.setValueAtTime(f, c.currentTime + t0);
+    if (slide) o.frequency.exponentialRampToValueAtTime(slide, c.currentTime + t0 + dur);
+    g.gain.setValueAtTime(0, c.currentTime + t0); g.gain.linearRampToValueAtTime(vol, c.currentTime + t0 + .01);
+    g.gain.exponentialRampToValueAtTime(.001, c.currentTime + t0 + dur);
+    o.connect(g).connect(c.destination); o.start(c.currentTime + t0); o.stop(c.currentTime + t0 + dur + .02);
+  };
+  return {
+    unlock() { const c = get(); if (c && c.state === 'suspended') c.resume(); },
+    ready() { const c = get(); return !!c && c.state === 'running'; },
+    on, toggle() { localStorage.setItem('sfx_on', on() ? '0' : '1'); if (on()) this.unlock(); },
+    drum() { for (let i = 0; i < 6; i++) tone(90, i * .13, .08, 'square', .12, 50); },      // 두구두구
+    boo() { tone(220, 0, .35, 'sawtooth', .12, 110); },                                        // 탈락 뿌웅
+    pop() { tone(880, 0, .07, 'triangle', .1, 1200); },                                        // 자리 톡
+    ding() { tone(1046, 0, .25, 'sine', .15); tone(1568, .05, .3, 'sine', .1); },              // 띠링
+    fanfare() { [[523, 0], [659, .12], [784, .24], [1046, .36]].forEach(([f, t]) => tone(f, t, .35, 'triangle', .16)); tone(1046, .6, .7, 'triangle', .14); },
+  };
+})();
+const buzz = p => { try { navigator.vibrate && navigator.vibrate(p); } catch (e) {} };
+
+/* 꽃가루 */
+function confetti(host, n = 60) {
+  const colors = ['#F5A623', '#1E8A52', '#1A7A9E', '#E74C3C', '#FFD700', '#fff'];
+  for (let i = 0; i < n; i++) {
+    const d = document.createElement('i'); d.className = 'cf';
+    d.style.cssText = `left:${Math.random() * 100}%;background:${colors[i % colors.length]};animation-delay:${Math.random() * .6}s;animation-duration:${1.6 + Math.random()}s;transform:rotate(${Math.random() * 360}deg)`;
+    host.appendChild(d); setTimeout(() => d.remove(), 3000);
+  }
+}
+
+/* 연출 상태 */
+let REV = { tripId: null, shown: -1, local: false, timers: [], dismissed: {}, watchedFill: false };
+const revClear = () => { REV.timers.forEach(clearTimeout); REV.timers = []; };
+const after = (ms, fn) => REV.timers.push(setTimeout(fn, ms));
+const revEl = id => document.getElementById(id);
+
+// 스냅샷마다 호출: 진행 중인 추첨 쇼가 있으면 열고, 단계가 바뀌면 그만큼 연출
+function syncReveal() {
+  if (!ME) return;
+  const t = TRIPS.find(x => x.seating?.status === 'drawn' && x.seating.reveal && !revealDone(x.seating) && (isMine(x) || ME.isAdmin));
+  const ov = revEl('reveal-overlay');
+  if (REV.local) return;                                   // 다시보기 중엔 서버 단계 무시
+  if (!t) {
+    // 보고 있던 쇼가 끝(done)났으면 마지막 단계까지 연출 후 유지
+    const cur = REV.tripId && TRIPS.find(x => x.id === REV.tripId);
+    if (cur?.seating?.reveal && ov.classList.contains('open')) advanceReveal(cur, revealStep(cur.seating));
+    return;
+  }
+  if (REV.dismissed[t.id] === (t.seating.reveal.startedAt || 0)) return;
+  if (REV.tripId !== t.id || !ov.classList.contains('open')) openReveal(t, false);
+  advanceReveal(t, revealStep(t.seating));
+  if (ME.isAdmin) runAutoReveal(t);
+}
+
+window.openReveal = function(t, local) {
+  revClear();
+  const st = t.seating, plan = revealPlan(st);
+  REV = { ...REV, tripId: t.id, shown: -1, local: !!local, watchedFill: false };
+  const nameOf = k => (t.applicants || []).find(a => a.kakao === k)?.name || '?';
+  const L = seatLayout(st);
+  const order = st.bowOrder || [];
+  const myStats = isMine(t) && order.includes(ME.kakao) ? bowStatsText(ME.kakao, t.id) : '';
+  revEl('reveal-overlay').innerHTML = `
+    <div class="rev-wrap">
+      <div class="rev-top">
+        <div><div class="rev-title">🎲 ${esc(t.title)}</div><div class="rev-sub">선수 ${L.bow.length}석 · 지원 ${order.length}명 · 신청 ${(t.applicants || []).length}명</div></div>
+        <div style="display:flex;gap:6px">
+          <button class="rev-icon" id="rev-sfx" onclick="toggleSfx()" title="효과음">${sfx.on() ? '🔊' : '🔇'}</button>
+          <button class="rev-icon" onclick="closeReveal()">✕</button>
+        </div>
+      </div>
+      <div class="rev-stage" id="rev-stage">
+        <div class="rev-status" id="rev-status"></div>
+        ${order.length ? `<div class="rev-cards" id="rev-cards">${order.map(k => `<div class="elim-card" data-k="${esc(k)}">
+            <div class="elim-face"><span class="elim-name">${esc(nameOf(k))}</span>${k === ME?.kakao ? '<span class="elim-me">나</span>' : ''}</div>
+            <div class="elim-stamp">탈락</div></div>`).join('')}</div>` : ''}
+        ${myStats ? `<div class="rev-stats" id="rev-stats">📊 ${myStats}</div>` : ''}
+        <div id="rev-boat" style="display:none"></div>
+        <div id="rev-mine"></div>
+      </div>
+      <div class="rev-ctrl" id="rev-ctrl"></div>
+      <div class="rev-sound-hint" id="rev-sound-hint" style="display:none" onclick="sfx.unlock();this.style.display='none'">🔊 화면을 한 번 탭하면 효과음이 켜져요</div>
+    </div>`;
+  const ov = revEl('reveal-overlay');
+  ov.classList.add('open');
+  ov.onclick = () => { sfx.unlock(); if (sfx.ready()) revEl('rev-sound-hint').style.display = 'none'; };
+  if (sfx.on() && !sfx.ready()) revEl('rev-sound-hint').style.display = 'block';
+  renderRevealCtrl(t);
+  if (local) { advanceReveal(t, 0); runLocalReveal(t); }
+};
+window.openRevealFor = function(tripId, local) { const t = TRIPS.find(x => x.id === tripId); if (t?.seating?.status === 'drawn') openReveal(t, local); };
+window.closeReveal = function() {
+  const t = TRIPS.find(x => x.id === REV.tripId);
+  if (t?.seating?.reveal && !REV.local) REV.dismissed[t.id] = t.seating.reveal.startedAt || 0;
+  revClear(); REV.local = false; REV.tripId = null;
+  revEl('reveal-overlay').classList.remove('open');
+  if (t) rerender();
+};
+window.toggleSfx = function() { sfx.toggle(); revEl('rev-sfx').textContent = sfx.on() ? '🔊' : '🔇'; };
+
+function renderRevealCtrl(t) {
+  const el = revEl('rev-ctrl'); if (!el) return;
+  const st = t.seating, plan = revealPlan(st), step = REV.local ? REV.shown : revealStep(st), last = plan.length - 1;
+  if (REV.local) { el.innerHTML = `<button class="btn btn-outline" style="border:1px solid rgba(255,255,255,.4);color:#fff;background:transparent" onclick="closeReveal()">닫기</button>`; return; }
+  if (!ME?.isAdmin) { el.innerHTML = step >= last ? `<button class="btn btn-primary" style="background:var(--sand)" onclick="closeReveal()">확인</button>` : `<div class="rev-wait">운영자가 공개를 진행합니다…</div>`; return; }
+  const next = plan[Math.min(step + 1, last)];
+  const label = step >= last ? '완료' : next.type === 'elim' ? (next.batch ? `1차 탈락 발표 (${next.kakaos.length}명)` : next.last ? '마지막 탈락자 발표' : '다음 탈락자') : next.type === 'final' ? '선수 당첨자 공개' : next.type === 'fill' ? '일반석 배치 공개' : '내 자리 공개';
+  el.innerHTML = step >= last
+    ? `<button class="btn btn-primary" style="background:var(--sand)" onclick="closeReveal()">끝내기</button>`
+    : `<label class="rev-auto"><input type="checkbox" ${st.reveal.auto ? 'checked' : ''} onchange="setRevealAuto('${t.id}',this.checked)"> 자동 진행</label>
+       <button class="btn btn-primary" style="flex:1;background:var(--sand)" onclick="revealNext('${t.id}')">▶ ${label}</button>
+       <button class="btn btn-outline rev-skip" onclick="revealSkip('${t.id}')">⏩ 끝까지</button>`;
+}
+window.revealNext = async function(tripId) {
+  const t = TRIPS.find(x => x.id === tripId); if (!t?.seating?.reveal) return;
+  const last = revealPlan(t.seating).length - 1, cur = revealStep(t.seating);
+  if (cur >= last) return;
+  try { await updateDoc(doc(db, 'trips', tripId), { 'seating.reveal.step': cur + 1 }); } catch (e) { console.error(e); }
+};
+window.revealSkip = async function(tripId) {
+  const t = TRIPS.find(x => x.id === tripId); if (!t?.seating?.reveal) return;
+  try { await updateDoc(doc(db, 'trips', tripId), { 'seating.reveal.step': revealPlan(t.seating).length - 1, 'seating.reveal.auto': false }); } catch (e) { console.error(e); }
+};
+window.setRevealAuto = async function(tripId, on) {
+  try { await updateDoc(doc(db, 'trips', tripId), { 'seating.reveal.auto': on }); } catch (e) { console.error(e); }
+};
+let _autoTimer = null;
+function runAutoReveal(t) {          // 운영자 폰이 자동 진행을 구동
+  clearTimeout(_autoTimer);
+  const st = t.seating;
+  if (!st.reveal?.auto || revealDone(st)) return;
+  const next = revealPlan(st)[revealStep(st) + 1];
+  const wait = next?.type === 'elim' && next.last ? 5000 : next?.type === 'final' ? 3500 : next?.type === 'fill' ? 2500 : next?.type === 'done' ? 1500 + FILL_MS * Object.keys(st.seats || {}).length : 2800;
+  _autoTimer = setTimeout(() => { const cur = TRIPS.find(x => x.id === t.id); if (cur?.seating?.reveal?.auto) revealNext(t.id); }, wait);
+}
+function runLocalReveal(t) {         // 다시보기: 이 폰에서만 자동 재생
+  const plan = revealPlan(t.seating);
+  const tick = () => {
+    if (!REV.local || REV.shown >= plan.length - 1) return;
+    const next = plan[REV.shown + 1];
+    const wait = next.type === 'elim' && next.last ? 4500 : next.type === 'final' ? 3000 : next.type === 'done' ? 1200 + FILL_MS * Object.keys(t.seating.seats || {}).length : 2200;
+    after(wait, () => { advanceReveal(t, REV.shown + 1); tick(); });
+  };
+  tick();
+}
+
+// shown 단계에서 target 단계까지 순서대로 연출 (여러 단계 건너뛰면 빠르게)
+function advanceReveal(t, target) {
+  if (target <= REV.shown) return;
+  const st = t.seating, plan = revealPlan(st);
+  const jump = target - REV.shown > 1;
+  revClear();
+  // 직전 단계가 아직 연출 중이었으면(드럼롤·배 채우기 등) 그 단계의 끝 상태를 먼저 즉시 적용
+  if (REV.shown >= 0) playStep(t, plan[REV.shown], true);
+  let delay = 0;
+  for (let i = REV.shown + 1; i <= target; i++) {
+    const s = plan[i], quick = jump && i < target;
+    ((s, d, quick) => after(d, () => playStep(t, s, quick)))(s, delay, quick);
+    delay += quick ? 150 : 0;
+  }
+  REV.shown = target;
+  after(delay + 10, () => renderRevealCtrl(t));
+}
+
+function playStep(t, s, quick) {
+  const st = t.seating, status = revEl('rev-status'); if (!status) return;
+  const me = ME?.kakao, nameOf = k => (t.applicants || []).find(a => a.kakao === k)?.name || '?';
+  const card = k => document.querySelector(`#rev-cards .elim-card[data-k="${CSS.escape(k)}"]`);
+  const alive = () => (st.bowOrder || []).filter(k => !document.querySelector(`#rev-cards .elim-card[data-k="${CSS.escape(k)}"].out`));
+  if (s.type === 'intro') {
+    const n = (st.bowOrder || []).length, b = (st.bowWinners || []).length;
+    status.innerHTML = n ? `선수 자리 <b>${seatLayout(st).bow.length}석</b>을 두고 <b>${n}명</b>이 도전!<br><span class="rev-odds">당첨 확률 ${Math.round(b / n * 100)}%</span>` : '선수 지원자가 없어 바로 일반석을 배치합니다';
+    if (!quick) sfx.ding();
+  } else if (s.type === 'elim') {
+    const flip = () => {
+      s.kakaos.forEach(k => { const c = card(k); if (c) c.classList.add('out'); });
+      const left = alive().length, win = (st.bowWinners || []).length;
+      const meOut = s.kakaos.includes(me);
+      status.innerHTML = s.batch ? `<b>1차 탈락 ${s.kakaos.length}명</b> 😢<br><span class="rev-odds">${left}명 생존 · 당첨 확률 ${Math.round(win / left * 100)}%</span>`
+        : `<b>${esc(nameOf(s.kakaos[0]))}</b> 탈락 😢${meOut ? ' — 아쉬워요!' : ''}<br><span class="rev-odds">${left}명 생존${left > win ? ` · 당첨 확률 ${Math.round(win / left * 100)}%` : ' · 선수 확정!'}</span>`;
+      if (!quick) { sfx.boo(); if (meOut) buzz([120, 60, 120]); }
+    };
+    if (quick) { flip(); return; }
+    if (s.last) {
+      status.innerHTML = `남은 ${alive().length}명 중 <b>마지막 탈락자</b>는…`;
+      alive().forEach(k => card(k)?.classList.add('tense'));
+      sfx.drum(); buzz(40);
+      after(2600, () => { alive().forEach(k => card(k)?.classList.remove('tense')); flip(); });
+    } else {
+      status.innerHTML = s.batch ? '1차 탈락자 발표…' : '다음 탈락자는…'; sfx.drum();
+      after(1100, flip);
+    }
+  } else if (s.type === 'final') {
+    const winners = st.bowWinners || [];
+    winners.forEach(k => card(k)?.classList.add('win'));
+    const meWin = winners.includes(me);
+    status.innerHTML = `🏆 선수 당첨: <b>${winners.map(nameOf).map(esc).join(', ')}</b>${meWin ? '<br><span class="rev-odds">축하합니다! 선수석입니다 🎉</span>' : ''}`;
+    if (!quick) { sfx.fanfare(); if (meWin) { buzz([200, 80, 200, 80, 400]); confetti(revEl('rev-stage')); } }
+  } else if (s.type === 'fill') {
+    const boat = revEl('rev-boat'); const cards = revEl('rev-cards'); if (cards) cards.style.display = 'none';
+    const stats = revEl('rev-stats'); if (stats) stats.style.display = 'none';
+    boat.style.display = 'block';
+    boat.innerHTML = seatMapHtml(t, false);
+    const seq = seatLayout(st).seq.map(x => x.n);
+    const cells = Object.fromEntries([...boat.querySelectorAll('.seat')].map(c => [+c.querySelector('b').textContent, c]));
+    status.innerHTML = '🚤 일반석 배치 중…';
+    if (quick) { Object.values(cells).forEach(c => c.classList.add('show')); return; }
+    Object.values(cells).forEach(c => c.classList.add('hide'));
+    seq.forEach((n, i) => after(300 + i * FILL_MS, () => { const c = cells[n]; if (!c) return; c.classList.remove('hide'); c.classList.add('show', 'pop'); sfx.pop(); if ((st.seats || {})[n] === me) buzz(60); }));
+    after(300 + seq.length * FILL_MS, () => { status.innerHTML = '배치 완료!'; });
+    REV.watchedFill = true;
+  } else if (s.type === 'done') {
+    const seats = st.seats || {}, myNo = Object.keys(seats).find(n => seats[n] === me);
+    const mine = revEl('rev-mine'); const boat = revEl('rev-boat');
+    if (!isMine(t)) { status.innerHTML = '🎉 자리배치가 모두 공개되었습니다'; if (boat) boat.style.display = 'block'; return; }
+    const isBow = myNo && seatLayout(st).bow.includes(+myNo);
+    const face = myNo ? `<div class="my-seat-card ${isBow ? 'gold' : ''}"><div class="msc-label">내 자리</div><div class="msc-no">${myNo}<small>번</small></div><div class="msc-side">${seatSideLabel(st, +myNo)}${isBow ? ' · 선수석 🏆' : ''}</div>
+        ${(st.bowOrder || []).includes(me) ? `<div class="msc-stats">📊 ${bowStatsText(me)}</div>` : ''}</div>` : `<div class="my-seat-card"><div class="msc-label">내 자리</div><div class="msc-side">미배정 — 운영자에게 문의해주세요</div></div>`;
+    const show = () => { mine.innerHTML = face; status.innerHTML = '🎉 내 자리를 확인하세요'; if (boat) boat.style.display = 'block'; if (!quick) { sfx.fanfare(); buzz([150, 60, 150]); if (isBow) confetti(revEl('rev-stage'), 40); } };
+    if (REV.watchedFill || quick || REV.local) show();
+    else { // 늦게 들어온 사람: 직접 뒤집기
+      if (boat) boat.style.display = 'none';
+      mine.innerHTML = `<div class="my-seat-card back" onclick="this.parentNode.__flip()"><div class="msc-label">👆 눌러서</div><div class="msc-no" style="font-size:22px">내 자리 확인</div></div>`;
+      mine.__flip = show; status.innerHTML = '추첨이 끝났어요!';
+    }
+  }
+}
+
 /* ── 🪑 자리배치 ─────────────────────────────────
  * trips/{id}.seating = {
  *   bow, port, starboard, start,          // 선수/좌현/우현 자리 수, 우현 시작번호
@@ -2208,6 +2524,7 @@ function drawSeating(c, participants, bowApplicants) {
   const pset = new Set(participants);
   const cand = shuffle([...new Set(bowApplicants)].filter(k => pset.has(k)));
   const winners = cand.slice(0, L.bow.length);
+  const elimOrder = cand.slice(L.bow.length);           // 탈락 순서 (공개 연출용)
   const bowSeats = shuffle(L.bow);
   const seats = {};
   winners.forEach((k, i) => { seats[bowSeats[i]] = k; });
@@ -2216,7 +2533,7 @@ function drawSeating(c, participants, bowApplicants) {
   // 일반석 부족 시 남은 선수석으로 채움
   const general = [...shuffle([...L.star, ...L.port]), ...shuffle(bowSeats.slice(winners.length))];
   others.forEach((k, i) => { if (i < general.length) seats[general[i]] = k; });
-  return { seats, winners };
+  return { seats, winners, elimOrder, bowOrder: shuffle(cand) };
 }
 
 let seatEdit = { tripId: null, sel: null };   // 운영자 자리 수정 모드 (sel: {seat:n} | {kakao})
@@ -2249,9 +2566,10 @@ function renderSeatingSection(t) {
   } else if (st.status === 'recruiting') {
     const iApplied = bowApps.includes(ME?.kakao);
     body = `<div style="background:var(--sand-light);border-radius:var(--radius-xs);padding:11px 13px;margin-bottom:10px;font-size:12px;color:#7A4F00;line-height:1.6">
-        선수 자리 <b>${L.bow.length}석</b> · 지원 <b>${bowApps.length}명</b><br>
+        선수 자리 <b>${L.bow.length}석</b> · 지원 <b>${bowApps.length}명</b>${bowApps.length ? ` · 당첨 확률 <b>${Math.min(100, Math.round(L.bow.length / bowApps.length * 100))}%</b>` : ''}<br>
         추첨 시 지원자 중 ${L.bow.length}명이 선수 자리에 당첨되고, 나머지는 일반 자리(좌·우현)에 무작위 배정됩니다.
       </div>
+      ${mine ? `<div style="font-size:11px;color:var(--text-sub);margin:-4px 0 10px;text-align:center">📊 내 선수 기록: ${bowStatsText(ME.kakao, t.id)}</div>` : ''}
       ${mine ? (iApplied
         ? `<button class="btn btn-outline" style="border:1.5px solid var(--sand);margin-bottom:10px" onclick="toggleBowApply('${t.id}',false)"><i class="ti ti-x"></i> 선수 지원 취소</button>`
         : `<button class="btn btn-primary" style="background:var(--sand);margin-bottom:10px" onclick="toggleBowApply('${t.id}',true)"><i class="ti ti-flag"></i> 선수 자리 지원하기</button>`) : ''}
@@ -2262,6 +2580,13 @@ function renderSeatingSection(t) {
           <button class="btn btn-outline btn-sm" style="flex:0 0 auto;border:.5px solid var(--border)" onclick="openSeatConfig('${t.id}')"><i class="ti ti-settings"></i> 설정</button>
           <button class="btn btn-primary btn-sm" style="flex:1" onclick="runSeatDraw('${t.id}')"><i class="ti ti-arrows-shuffle"></i> 추첨하기 (${applicants.length}명)</button>
         </div>` : ''}`;
+  } else if (st.status === 'drawn' && !revealDone(st) && !ME?.isAdmin) {
+    body = `<div style="text-align:center;padding:10px 0">
+      <div style="font-size:30px">🎬</div>
+      <div style="font-size:13px;font-weight:800;margin:4px 0">추첨 결과 공개 중!</div>
+      <div style="font-size:12px;color:var(--text-hint);margin-bottom:10px">운영자가 한 단계씩 공개하고 있어요</div>
+      ${mine ? `<button class="btn btn-primary" style="background:var(--sand)" onclick="openRevealFor('${t.id}',false)"><i class="ti ti-player-play"></i> 공개 현장 보기</button>` : ''}
+    </div>`;
   } else if (st.status === 'drawn') {
     const seats = st.seats || {};
     const myNo = Object.keys(seats).find(n => seats[n] === ME?.kakao);
@@ -2279,7 +2604,9 @@ function renderSeatingSection(t) {
         <div style="font-size:11px;font-weight:700;color:var(--danger);margin-bottom:6px">미배정 ${unassigned.length}명${editing ? ' — 이름을 누르고 빈자리를 누르세요' : ''}</div>
         ${unassigned.map(a => `<span class="chip" style="${editing ? 'cursor:pointer;' : ''}${seatEdit.sel?.kakao === a.kakao ? 'outline:2px solid var(--danger);' : ''}" ${editing ? `onclick="seatTapPerson('${t.id}','${a.kakao}')"` : ''}>${a.name}</span>`).join('')}
       </div>` : ''}
-      <div style="font-size:10px;color:var(--text-hint);margin-top:8px;text-align:center">추첨 ${st.drawnAt ? new Date(st.drawnAt).toLocaleString('ko-KR') : ''} · 선수 지원 ${bowApps.length}명 중 ${(st.bowWinners || []).length}명 당첨</div>
+      ${!revealDone(st) && ME?.isAdmin ? `<button class="btn btn-primary" style="background:var(--sand);margin-top:10px" onclick="openRevealFor('${t.id}',false)"><i class="ti ti-player-play"></i> 🎬 공개 진행 화면 열기</button>`
+        : st.reveal ? `<button class="btn btn-outline btn-sm" style="width:100%;margin-top:10px;border:.5px solid var(--border)" onclick="openRevealFor('${t.id}',true)"><i class="ti ti-player-play"></i> 추첨 다시 보기</button>` : ''}
+      <div style="font-size:10px;color:var(--text-hint);margin-top:8px;text-align:center">추첨 ${st.drawnAt ? new Date(st.drawnAt).toLocaleString('ko-KR') : ''} · 선수 지원 ${bowApps.length}명 중 ${(st.bowWinners || []).length}명 당첨 · 추첨번호 ${(st.drawnAt || 0).toString(36).toUpperCase().slice(-6)}</div>
       ${ME?.isAdmin ? `<div style="display:flex;gap:6px;margin-top:10px">
         <button class="btn btn-sm ${editing ? 'btn-danger' : 'btn-primary'}" style="flex:1" onclick="toggleSeatEdit('${t.id}')"><i class="ti ti-${editing ? 'check' : 'edit'}"></i> ${editing ? '수정 완료' : '자리 수정'}</button>
         <button class="btn btn-outline btn-sm" style="border:.5px solid var(--border)" onclick="runSeatDraw('${t.id}',true)"><i class="ti ti-arrows-shuffle"></i> 재추첨</button>
@@ -2397,17 +2724,19 @@ window.runSeatDraw = async function(tripId, redraw) {
       const snap = await tx.get(ref);
       const d = snap.data(), st = d.seating;
       if (!st) throw new Error('NO_SEATING');
-      const { seats, winners } = drawSeating(st, (d.applicants || []).map(a => a.kakao), st.bowApplicants || []);
+      const { seats, winners, elimOrder, bowOrder } = drawSeating(st, (d.applicants || []).map(a => a.kakao), st.bowApplicants || []);
       tx.update(ref, { 'seating.seats': seats, 'seating.bowWinners': winners, 'seating.status': 'drawn',
+        'seating.elimOrder': elimOrder, 'seating.bowOrder': bowOrder,
+        'seating.reveal': { step: 0, auto: false, startedAt: Date.now() },     // 진행자 모드: 운영자가 한 단계씩 공개
         'seating.drawnAt': Date.now(), 'seating.drawnBy': ME.kakao });
     });
-    showToast('🎲 자리 추첨이 완료되었습니다');
+    showToast('🎲 추첨 완료! 아래 ▶ 버튼으로 한 단계씩 공개하세요');
   } catch (e) { showToast('⚠️ 추첨 중 오류 발생'); console.error(e); }
 };
 window.resetSeating = async function(tripId) {
   if (!confirm('자리배치를 초기화할까요?\n선수 지원자와 추첨 결과가 모두 삭제되고 준비 단계로 돌아갑니다.')) return;
   try {
-    await updateDoc(doc(db, 'trips', tripId), { 'seating.status': 'setup', 'seating.seats': {}, 'seating.bowApplicants': [], 'seating.bowWinners': [] });
+    await updateDoc(doc(db, 'trips', tripId), { 'seating.status': 'setup', 'seating.seats': {}, 'seating.bowApplicants': [], 'seating.bowWinners': [], 'seating.elimOrder': [], 'seating.bowOrder': [], 'seating.reveal': null });
     seatEdit = { tripId: null, sel: null };
     showToast('자리배치를 초기화했습니다');
   } catch (e) { showToast('⚠️ 오류 발생'); console.error(e); }
